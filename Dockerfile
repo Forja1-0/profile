@@ -1,6 +1,15 @@
 # Stage 1: Build the React application
 FROM node:20-alpine AS build
 WORKDIR /app
+
+# Declare build arguments (Easypanel will pass these during build time)
+ARG VITE_API_URL
+ARG VITE_USER_ID
+
+# Expose them as environment variables for the Vite build script
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_USER_ID=$VITE_USER_ID
+
 COPY package*.json ./
 RUN npm install
 COPY . .
