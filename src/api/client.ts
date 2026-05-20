@@ -1,12 +1,26 @@
 /**
  * Cliente HTTP del perfil. Mismo shape de errores que onboarding/src/api.
  * BASE = VITE_API_URL (default localhost:3000, el puerto de forja-api).
- * El user se identifica con VITE_USER_ID (deeplink desde WhatsApp/onboarding
- * en producción; acá una env var para conectar contra una DB real).
+ *
+ * Identificacion del usuario: viene de la sesion guardada en localStorage
+ * (api/session.ts). El backend recibe `Authorization: Bearer <token>` y
+ * resuelve el user_id por su lado. VITE_USER_ID se sigue soportando solo
+ * como override de desarrollo para apuntar a un user fijo sin loguearse.
  */
+import { clearSession, getSession } from "./session";
 
 export const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
-export const USER_ID = import.meta.env.VITE_USER_ID ?? "";
+
+/**
+ * USER_ID dinamico: se evalua cada vez que alguien lo lee. Despues del
+ * login se reflejan los cambios sin reload. En dev, VITE_USER_ID gana
+ * porque permite trabajar contra una DB real sin pasar por WhatsApp.
+ */
+export function currentUserId(): string {
+  const override = import.meta.env.VITE_USER_ID;
+  if (override) return override;
+  return getSession()?.userId ?? "";
+}
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public details?: unknown) {
@@ -17,20 +31,33 @@ export class ApiError extends Error {
 
 async function unwrap<T>(res: Response): Promise<T> {
   if (res.ok) return (await res.json()) as T;
+  if (res.status === 401) {
+    // Sesion invalida -> limpiamos y forzamos re-login.
+    clearSession();
+  }
   const body = await res.json().catch(() => ({ error: "unknown_error" }));
   throw new ApiError(res.status, body.error ?? "unknown_error", body.details ?? body.issues);
+}
+
+function authHeaders(): Record<string, string> {
+  const s = getSession();
+  return s ? { Authorization: `Bearer ${s.token}` } : {};
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: { "Content-Type": "application/json", ...authHeaders(), ...(init?.headers ?? {}) },
   });
   return unwrap<T>(res);
 }
 
 async function upload<T>(path: string, form: FormData): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { method: "POST", body: form });
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    body: form,
+    headers: authHeaders(),
+  });
   return unwrap<T>(res);
 }
 

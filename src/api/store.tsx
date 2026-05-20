@@ -1,5 +1,5 @@
 /**
- * Fuente única de datos del perfil. Si hay VITE_USER_ID configurado lee la
+ * Fuente única de datos del perfil. Si hay sesión activa (post-login WhatsApp) o VITE_USER_ID configurado, lee la
  * API real (forja-api, schema canónico), la transforma a las formas de la UI
  * y expone mutaciones que pegan al backend. Si no hay usuario o la API falla,
  * cae a los datos demo (mock) y las mutaciones quedan locales — así el perfil
@@ -7,7 +7,7 @@
  */
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  api, USER_ID, ApiError,
+  api, currentUserId, ApiError,
   type DbProfileIdentity, type DbNutrition,
   type DbHealth, type DbDocument, type DbPreferences,
 } from "./client";
@@ -128,7 +128,7 @@ const DEFAULT_PREFS: DbPreferences = {
 
 export function ProfileDataProvider({ children }: { children: ReactNode }) {
   const [source, setSource] = useState<Source>("demo");
-  const [loading, setLoading] = useState<boolean>(!!USER_ID);
+  const [loading, setLoading] = useState<boolean>(!!currentUserId());
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<Bundle>(demoBundle);
   const [meals, setMeals] = useState<FrequentMeal[]>(mock.frequentMeals);
@@ -139,9 +139,9 @@ export function ProfileDataProvider({ children }: { children: ReactNode }) {
 
   async function load() {
     const [id, ov, nu, tr, he, jo, ml, docs, prefs] = await Promise.all([
-      api.identity(USER_ID), api.overview(USER_ID), api.nutrition(USER_ID),
-      api.training(USER_ID), api.health2(USER_ID), api.journey(USER_ID),
-      api.listMeals(USER_ID), api.listDocuments(USER_ID), api.getPreferences(USER_ID),
+      api.identity(currentUserId()), api.overview(currentUserId()), api.nutrition(currentUserId()),
+      api.training(currentUserId()), api.health2(currentUserId()), api.journey(currentUserId()),
+      api.listMeals(currentUserId()), api.listDocuments(currentUserId()), api.getPreferences(currentUserId()),
     ]);
     const home = buildHome(id, ov);
     const nut = buildNutrition(nu);
@@ -162,7 +162,7 @@ export function ProfileDataProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    if (!USER_ID) return; // demo directo
+    if (!currentUserId()) return; // demo directo
     let cancelled = false;
     (async () => {
       try {
@@ -185,46 +185,46 @@ export function ProfileDataProvider({ children }: { children: ReactNode }) {
   /* ---------- Comidas frecuentes ---------- */
   const createMeal = async (m: FrequentMeal) => {
     if (isLive()) {
-      const saved = await api.createMeal(USER_ID, mealToPayload(m));
+      const saved = await api.createMeal(currentUserId(), mealToPayload(m));
       setMeals((p) => [...p, mealFromDb(saved)]);
     } else setMeals((p) => [...p, m]);
   };
   const updateMeal = async (m: FrequentMeal) => {
     if (isLive()) {
-      const saved = await api.updateMeal(USER_ID, m.id, mealToPayload(m));
+      const saved = await api.updateMeal(currentUserId(), m.id, mealToPayload(m));
       setMeals((p) => p.map((x) => (x.id === m.id ? mealFromDb(saved) : x)));
     } else setMeals((p) => p.map((x) => (x.id === m.id ? m : x)));
   };
   const deleteMeal = async (id: string) => {
-    if (isLive()) await api.deleteMeal(USER_ID, id);
+    if (isLive()) await api.deleteMeal(currentUserId(), id);
     setMeals((p) => p.filter((x) => x.id !== id));
   };
 
   /* ---------- Datos personales / cuenta ---------- */
   const updateIdentity: Ctx["updateIdentity"] = async (patch) => {
-    if (isLive()) { await api.updateIdentity(USER_ID, patch); await reload(); }
+    if (isLive()) { await api.updateIdentity(currentUserId(), patch); await reload(); }
     else setData((d) => ({ ...d, athlete: { ...d.athlete, ...patch, name: patch.name ?? d.athlete.name } }));
   };
-  const deleteAccount = async () => { if (isLive()) await api.deleteAccount(USER_ID); };
+  const deleteAccount = async () => { if (isLive()) await api.deleteAccount(currentUserId()); };
 
   /* ---------- Plan nutricional ---------- */
   const updateNutritionPlan: Ctx["updateNutritionPlan"] = async (d) => {
-    if (isLive()) { await api.updateNutritionPlan(USER_ID, d); await reload(); }
+    if (isLive()) { await api.updateNutritionPlan(currentUserId(), d); await reload(); }
     else setData((s) => ({ ...s, nutritionPlan: { ...s.nutritionPlan, kcal: d.target_kcal, protein: d.target_protein_g, carbs: d.target_carbs_g, fat: d.target_fat_g } }));
   };
   const uploadNutritionPlanFile = async (f: File) => {
-    if (isLive()) { await api.uploadNutritionPlanFile(USER_ID, f); await reload(); }
+    if (isLive()) { await api.uploadNutritionPlanFile(currentUserId(), f); await reload(); }
   };
   const deleteNutritionPlanFile = async () => {
-    if (isLive()) { await api.deleteNutritionPlanFile(USER_ID); await reload(); }
+    if (isLive()) { await api.deleteNutritionPlanFile(currentUserId()); await reload(); }
   };
 
   /* ---------- Restricciones / cuerpo ---------- */
   const saveRestrictions: Ctx["saveRestrictions"] = async (flags, other) => {
-    if (isLive()) { await api.updateRestrictions(USER_ID, flags, other); await reload(); }
+    if (isLive()) { await api.updateRestrictions(currentUserId(), flags, other); await reload(); }
   };
   const updateBody: Ctx["updateBody"] = async (patch) => {
-    if (isLive()) { await api.updateBody(USER_ID, patch); await reload(); }
+    if (isLive()) { await api.updateBody(currentUserId(), patch); await reload(); }
     else setData((d) => ({
       ...d,
       bodyData: {
@@ -238,10 +238,10 @@ export function ProfileDataProvider({ children }: { children: ReactNode }) {
 
   /* ---------- Médico ---------- */
   const saveActiveInjuries = async (injuries: unknown[]) => {
-    if (isLive()) { await api.updateInjuries(USER_ID, injuries); await reload(); }
+    if (isLive()) { await api.updateInjuries(currentUserId(), injuries); await reload(); }
   };
   const saveMedical: Ctx["saveMedical"] = async (patch) => {
-    if (isLive()) { await api.updateMedical(USER_ID, patch); await reload(); }
+    if (isLive()) { await api.updateMedical(currentUserId(), patch); await reload(); }
     else setData((d) => ({
       ...d,
       chronic: patch.chronic_conditions ?? d.chronic,
@@ -255,20 +255,20 @@ export function ProfileDataProvider({ children }: { children: ReactNode }) {
   /* ---------- Documentos ---------- */
   const uploadDocument = async (f: File, slot: string, docType: string) => {
     if (isLive()) {
-      const doc = await api.uploadDocument(USER_ID, f, slot, docType);
+      const doc = await api.uploadDocument(currentUserId(), f, slot, docType);
       setDocuments((p) => [doc, ...p]);
     }
   };
   const deleteDocument = async (id: string) => {
-    if (isLive()) await api.deleteDocument(USER_ID, id);
+    if (isLive()) await api.deleteDocument(currentUserId(), id);
     setDocuments((p) => p.filter((d) => d.id !== id));
   };
-  const documentFileUrl = (id: string) => (isLive() ? api.documentFileUrl(USER_ID, id) : null);
+  const documentFileUrl = (id: string) => (isLive() ? api.documentFileUrl(currentUserId(), id) : null);
 
   /* ---------- Preferencias ---------- */
   const savePreferences = async (p: DbPreferences) => {
     setPreferences(p);
-    if (isLive()) await api.savePreferences(USER_ID, p);
+    if (isLive()) await api.savePreferences(currentUserId(), p);
   };
 
   return (
@@ -277,10 +277,10 @@ export function ProfileDataProvider({ children }: { children: ReactNode }) {
         source, loading, error, data, meals, raw, documents, preferences, reload,
         createMeal, updateMeal, deleteMeal,
         updateIdentity, deleteAccount,
-        exportUrl: USER_ID ? api.exportUrl(USER_ID) : null,
+        exportUrl: currentUserId() ? api.exportUrl(currentUserId()) : null,
         updateNutritionPlan, uploadNutritionPlanFile, deleteNutritionPlanFile,
         nutritionPlanFileUrl:
-          USER_ID && raw.nutrition?.active?.plan_file_url ? api.nutritionPlanFileUrl(USER_ID) : null,
+          currentUserId() && raw.nutrition?.active?.plan_file_url ? api.nutritionPlanFileUrl(currentUserId()) : null,
         saveRestrictions, updateBody,
         saveActiveInjuries, saveMedical,
         uploadDocument, deleteDocument, documentFileUrl,
