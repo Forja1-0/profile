@@ -5,9 +5,8 @@
  * en producción; acá una env var para conectar contra una DB real).
  */
 
-const env = (import.meta as unknown as { env?: Record<string, string> }).env ?? {};
-export const API_BASE = env.VITE_API_URL ?? "http://localhost:3000";
-export const USER_ID = env.VITE_USER_ID ?? "";
+export const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+export const USER_ID = import.meta.env.VITE_USER_ID ?? "";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public details?: unknown) {
