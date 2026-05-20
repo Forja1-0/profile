@@ -111,7 +111,7 @@ function SessionHistory() {
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-4">
         {[
           { l: "Completitud", v: `${data.sessionStats.rate}%`, s: `${data.sessionStats.done}/${data.sessionStats.planned}` },
           { l: "Sesiones", v: data.sessionStats.done, s: "desde día 1" },
@@ -119,7 +119,7 @@ function SessionHistory() {
           { l: "Saltadas", v: data.sessionStats.planned - data.sessionStats.done, s: "total" },
         ].map((x) => (
           <div key={x.l} className="f-card">
-            <div className="font-sans font-bold text-[22px] text-f-text">{x.v}</div>
+            <div className="font-sans font-bold text-[20px] sm:text-[22px] text-f-text">{x.v}</div>
             <div className="f-datalabel mt-1">{x.l}</div>
             <div className="font-mono text-[10px] text-f-text3 mt-0.5">{x.s}</div>
           </div>

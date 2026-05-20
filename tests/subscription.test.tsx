@@ -28,7 +28,7 @@ describe("Subscription", () => {
     await user.click(screen.getByRole("tab", { name: "Referidos" }));
     expect(screen.getByDisplayValue("forja.app/r/ROCIO-FORJA")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Copiar/i })).toBeInTheDocument();
-    expect(screen.getByText("Personas referidas")).toBeInTheDocument();
+    expect(screen.getByText("Referidas")).toBeInTheDocument();
     expect(screen.getByText("Activas (30d+)")).toBeInTheDocument();
   });
 });

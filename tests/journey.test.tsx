@@ -9,7 +9,7 @@ describe("Journey", () => {
     expect(screen.getByRole("tab", { name: "Timeline de eventos" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("Nuevo PR: Sentadilla 95 kg")).toBeInTheDocument();
     expect(screen.getByText("Inicio en Forja")).toBeInTheDocument();
-    expect(screen.getByText("Streak máx")).toBeInTheDocument();
+    expect(screen.getByText("Streak")).toBeInTheDocument();
   });
 
   it("shows the journey card preview and gallery", async () => {

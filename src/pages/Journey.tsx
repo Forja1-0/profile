@@ -46,16 +46,16 @@ function Timeline() {
   const { journeyTotals, timeline } = data;
   return (
     <>
-      <div className="grid grid-cols-3 sm:grid-cols-7 gap-3 mb-6">
-        <div className="f-card col-span-3 sm:col-span-7 grid grid-cols-3 sm:grid-cols-7 gap-y-5">
-          <Stat label="Sesiones" value={journeyTotals.sessions} tone="green" />
-          <Stat label="Comidas log." value={journeyTotals.mealsLogged} />
-          <Stat label="Streak máx" value={`${journeyTotals.maxStreak}d`} tone="gold" />
-          <Stat label="PRs" value={journeyTotals.prs} tone="gold" />
-          <Stat label="Lesiones sup." value={journeyTotals.injuriesBeat} tone="green" />
-          <Stat label="Deslices rec." value={journeyTotals.slipsRecovered} tone="warn" />
-          <Stat label="Sem. >90" value={journeyTotals.weeksOver90} tone="green" />
-        </div>
+      {/* En mobile mostramos 4 stats por fila × 2 filas = 8 celdas pero usamos 7
+          (la última queda equilibrada visualmente con 2-3-3 wrap natural). */}
+      <div className="f-card mb-5 sm:mb-6 grid grid-cols-4 sm:grid-cols-7 gap-y-5 gap-x-2">
+        <Stat label="Sesiones" value={journeyTotals.sessions} tone="green" />
+        <Stat label="Comidas" value={journeyTotals.mealsLogged} />
+        <Stat label="Streak" value={`${journeyTotals.maxStreak}d`} tone="gold" />
+        <Stat label="PRs" value={journeyTotals.prs} tone="gold" />
+        <Stat label="Lesiones" value={journeyTotals.injuriesBeat} tone="green" />
+        <Stat label="Deslices" value={journeyTotals.slipsRecovered} tone="warn" />
+        <Stat label="Sem >90" value={journeyTotals.weeksOver90} tone="green" />
       </div>
 
       <div className="f-card">
@@ -162,7 +162,7 @@ function Score() {
   const labels = ["S1", "", "", "", "", "", "S7", "", "", "", "", "", "", "S14"];
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-4">
         {[
           { l: "Score actual", v: scoreStats.current, tone: scoreColor(scoreStats.current) },
           { l: "Promedio 7d", v: scoreStats.avg7, tone: "#5B8A64" },
@@ -170,7 +170,7 @@ function Score() {
           { l: "Promedio 90d", v: scoreStats.avg90, tone: "#C49A3C" },
         ].map((x) => (
           <div key={x.l} className="f-card">
-            <div className="font-sans font-bold text-[28px]" style={{ color: x.tone }}>{x.v}</div>
+            <div className="font-sans font-bold text-[24px] sm:text-[28px]" style={{ color: x.tone }}>{x.v}</div>
             <div className="f-datalabel mt-1">{x.l}</div>
           </div>
         ))}

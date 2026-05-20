@@ -41,13 +41,18 @@ select.f-input { appearance: none; cursor: pointer; }
 .f-error { font: 400 12px/1.45 'DM Sans', sans-serif; color: #A8404D; margin-top: 6px; }
 
 /* ============ Cards (shared) ============ */
-.f-card { background: #161619; border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; }
-.f-card-soft { background: rgba(58,90,64,0.10); border: 1px solid rgba(91,138,100,0.20); border-radius: 12px; padding: 16px; }
-.f-card-warn { background: rgba(122,40,50,0.12); border: 1px solid #5C1E26; border-radius: 12px; padding: 18px; }
+.f-card { background: #161619; border: 1px solid rgba(255,255,255,0.05); border-radius: 14px; padding: 18px; }
+.f-card-soft { background: rgba(58,90,64,0.10); border: 1px solid rgba(91,138,100,0.20); border-radius: 14px; padding: 16px; }
+.f-card-warn { background: rgba(122,40,50,0.12); border: 1px solid #5C1E26; border-radius: 14px; padding: 16px; }
+@media (min-width: 640px) {
+  .f-card { padding: 20px; }
+  .f-card-soft { padding: 18px; }
+  .f-card-warn { padding: 18px; }
+}
 @media (max-width: 380px) {
-  .f-card { padding: 16px; }
-  .f-card-soft { padding: 14px; }
-  .f-card-warn { padding: 14px; }
+  .f-card { padding: 14px; }
+  .f-card-soft { padding: 13px; }
+  .f-card-warn { padding: 13px; }
 }
 
 /* ============ Buttons (shared) ============ */
@@ -141,16 +146,17 @@ select.f-input { appearance: none; cursor: pointer; }
 .f-switch[data-on="true"]::after { transform: translateX(18px); background: #abd0af; }
 
 /* ============ Tabs ============ */
-.f-tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.f-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .f-tabs::-webkit-scrollbar { display: none; }
 .f-tab {
-  flex: none; padding: 9px 14px; border-radius: 8px;
+  flex: none; min-height: 36px; padding: 8px 14px; border-radius: 100px;
   font: 500 13px/1 'DM Sans', sans-serif; color: #8A8680;
-  background: transparent; border: 1px solid transparent; cursor: pointer;
+  background: #111113; border: 1px solid rgba(255,255,255,0.06); cursor: pointer;
   transition: background .12s, color .12s, border-color .12s; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
 }
 .f-tab:hover { color: #E8E4DC; }
-.f-tab[aria-selected="true"] { background: #161619; color: #E8E4DC; border-color: rgba(255,255,255,0.05); }
+.f-tab[aria-selected="true"] { background: #2D4532; color: #E8E4DC; border-color: rgba(91,138,100,0.45); }
 
 /* ============ Data table ============ */
 .f-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -213,17 +219,19 @@ select.f-input { appearance: none; cursor: pointer; }
   display: flex; align-items: stretch; justify-content: space-around;
 }
 .f-bottomtab {
-  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 8px 2px; color: #524F4A; min-height: 56px; justify-content: center;
-  font: 500 9px/1 'DM Sans', sans-serif; cursor: pointer;
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 9px 4px; color: #524F4A; min-height: 60px; justify-content: center;
+  font: 500 10.5px/1.1 'DM Sans', sans-serif; cursor: pointer;
+  background: transparent; border: 0;
   -webkit-tap-highlight-color: transparent;
+  transition: color .12s;
 }
 .f-bottomtab > span:last-child {
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .f-bottomtab[aria-current="page"] { color: #abd0af; }
-@media (max-width: 359px) {
-  .f-bottomtab { font-size: 8.5px; padding: 8px 1px; }
+.f-bottomtab[aria-current="page"] .material-symbols-outlined {
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'opsz' 24;
 }
 
 /* ============ Ambient bg (shared) ============ */
@@ -258,5 +266,24 @@ select.f-input { appearance: none; cursor: pointer; }
 .f-scroll-x::-webkit-scrollbar { height: 6px; }
 .f-scroll-x::-webkit-scrollbar-thumb { background: #2C2C32; border-radius: 100px; }
 
-/* Safe-area offsets */
-.f-pad-bottom-nav { padding-bottom: max(96px, calc(76px + env(safe-area-inset-bottom, 0px))); }
+/* Safe-area offsets — el bottom nav mide ~60px + safe-area; agregamos
+   colchón extra para que el último contenido no quede pegado al borde. */
+.f-pad-bottom-nav { padding-bottom: max(96px, calc(80px + env(safe-area-inset-bottom, 0px))); }
+
+/* ============ Mobile-first tweaks ============ */
+@media (max-width: 640px) {
+  /* Inputs un poco más altos en mobile para tap target cómodo */
+  .f-input { height: 46px; font-size: 15px; }
+  /* Botones primarios full-width naturalmente en mobile */
+  .f-btn { min-height: 44px; }
+  .f-btn-sm { min-height: 36px; }
+  /* Pills de tabs más generosas para el dedo */
+  .f-tab { padding: 9px 16px; min-height: 38px; font-size: 13.5px; }
+  /* Reducir motion-bloat */
+  .f-fade-up { animation-duration: .25s; }
+  /* La h1 de sección no necesita tanto peso visual */
+  h1 { letter-spacing: -0.005em; }
+}
+@media (max-width: 380px) {
+  .f-input { font-size: 14.5px; }
+}

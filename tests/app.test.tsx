@@ -16,9 +16,17 @@ describe("App shell — routing, layout & navigation", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders every section in the navigation (sidebar + bottom nav)", () => {
+  it("renders every section in the navigation (sidebar + bottom nav + 'Más' drawer)", async () => {
+    const user = userEvent.setup();
     render(<App />);
-    for (const label of [/Nutrición/i, /Entreno/i, /Salud/i, /Journey/i, /Config/i, /Plan/i]) {
+    // Primarias: viven en sidebar y bottom nav.
+    for (const label of [/Nutrición/i, /Entreno/i, /Salud/i]) {
+      expect(screen.getAllByRole("link", { name: label }).length).toBeGreaterThan(0);
+    }
+    // Secundarias: en sidebar siempre; en mobile detrás del botón "Más".
+    // Abrimos el drawer para que existan en el DOM accesible para mobile users.
+    await user.click(screen.getByRole("button", { name: /Abrir más opciones/i }));
+    for (const label of [/Journey/i, /Configuración/i, /Suscripción/i]) {
       expect(screen.getAllByRole("link", { name: label }).length).toBeGreaterThan(0);
     }
   });

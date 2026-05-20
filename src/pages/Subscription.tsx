@@ -56,15 +56,18 @@ function AccountState() {
             <div className="text-[15px] text-f-text mt-1">{subscription.nextCharge} · {subscription.amount}</div>
           </div>
         </div>
-        <div className="mt-5 pt-5 border-t border-f-border flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-5 pt-5 border-t border-f-border flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2 text-[13px] text-f-text2">
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>credit_card</span>
             {subscription.card.brand} ···· {subscription.card.last4}
           </div>
-          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            <button className="f-btn f-btn-primary f-btn-sm flex-1 sm:flex-none">Upgrade a Ferrari</button>
-            <button className="f-btn f-btn-secondary f-btn-sm flex-1 sm:flex-none">Downgrade</button>
-            <button className="f-btn f-btn-danger f-btn-sm flex-1 sm:flex-none" onClick={() => setCancel(true)}>Cancelar</button>
+          {/* En mobile la acción primaria ocupa toda la fila; las secundarias quedan juntas */}
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <button className="f-btn f-btn-primary w-full sm:w-auto">Upgrade a Ferrari</button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button className="f-btn f-btn-secondary f-btn-sm flex-1 sm:flex-none">Downgrade</button>
+              <button className="f-btn f-btn-danger f-btn-sm flex-1 sm:flex-none" onClick={() => setCancel(true)}>Cancelar</button>
+            </div>
           </div>
         </div>
       </div>
@@ -154,9 +157,9 @@ function Referrals() {
           <button className="f-btn f-btn-primary f-btn-sm flex-none"><span className="material-symbols-outlined" style={{ fontSize: 17 }}>content_copy</span> Copiar</button>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3 mt-4">
-        <div className="f-card text-center"><div className="font-sans font-bold text-[28px] text-f-text">{r.invited}</div><div className="f-datalabel mt-1">Personas referidas</div></div>
-        <div className="f-card text-center"><div className="font-sans font-bold text-[28px] text-f-green-light">{r.converted}</div><div className="f-datalabel mt-1">Activas (30d+)</div></div>
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 mt-4">
+        <div className="f-card text-center"><div className="font-sans font-bold text-[24px] sm:text-[28px] text-f-text">{r.invited}</div><div className="f-datalabel mt-1">Referidas</div></div>
+        <div className="f-card text-center"><div className="font-sans font-bold text-[24px] sm:text-[28px] text-f-green-light">{r.converted}</div><div className="f-datalabel mt-1">Activas (30d+)</div></div>
       </div>
       <div className="mt-4"><Callout icon="redeem">1 mes gratis de Audi por cada referido que completa 30 días activo. Llevás {r.converted} — eso son {r.converted} meses.</Callout></div>
     </>

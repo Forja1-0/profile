@@ -79,15 +79,21 @@ export function Callout({ children, icon = "bolt" }: { children: ReactNode; icon
   );
 }
 
+/**
+ * SectionHeader — en mobile mostramos eyebrow compacto + título + (sin lede)
+ * + acción inline. La lede se oculta porque ya hay topbar con contexto y la
+ * meta era reducir el muro de texto. En desktop, todo visible: hay espacio
+ * y refleja profesionalismo.
+ */
 export function SectionHeader({
   eyebrow, title, lede, action,
 }: { eyebrow: string; title: ReactNode; lede?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4 mb-5">
+    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-5">
       <div className="min-w-0">
-        <div className="f-eyebrow mb-2">{eyebrow}</div>
+        <div className="f-eyebrow mb-1.5 sm:mb-2">{eyebrow}</div>
         <h1 className="font-sans font-bold text-[22px] sm:text-[26px] leading-[1.15] text-f-text">{title}</h1>
-        {lede && <p className="mt-2 text-[14px] leading-[1.55] text-f-text2 max-w-[60ch]">{lede}</p>}
+        {lede && <p className="mt-2 text-[14px] leading-[1.55] text-f-text2 max-w-[60ch] hidden sm:block">{lede}</p>}
       </div>
       {action && (
         <div className="flex-none [&>*]:w-full sm:[&>*]:w-auto">{action}</div>
@@ -100,13 +106,18 @@ export function Tabs<T extends string>({
   tabs, value, onChange,
 }: { tabs: { value: T; label: string }[]; value: T; onChange: (v: T) => void }) {
   return (
-    <div className="f-tabs mb-5 -mx-1 px-1" role="tablist">
+    <div
+      className="f-tabs mb-4 sm:mb-5 -mx-4 sm:mx-0 px-4 sm:px-0 sticky top-12 lg:static z-30 bg-f-black/85 backdrop-blur-sm lg:bg-transparent lg:backdrop-blur-0 py-1.5 lg:py-0"
+      role="tablist"
+      style={{ scrollSnapType: "x mandatory" } as React.CSSProperties}
+    >
       {tabs.map((t) => (
         <button
           key={t.value}
           role="tab"
           aria-selected={value === t.value}
           className="f-tab"
+          style={{ scrollSnapAlign: "start" } as React.CSSProperties}
           onClick={() => onChange(t.value)}
         >
           {t.label}
@@ -283,18 +294,32 @@ export function ConfirmDialog({
   );
 }
 
-/* Slide-over / modal genérico para formularios */
+/**
+ * Sheet — bottom-sheet en mobile con drag handle, centered modal en desktop.
+ * Maneja overflow del body para evitar scroll detrás del overlay y respeta
+ * safe-area inferior + URL bar de Safari/Chrome.
+ */
 export function Sheet({
   open, title, onClose, children, footer,
 }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/70 f-fade-up" onClick={onClose}>
       <div
-        className="w-full sm:max-w-[480px] bg-f-card border border-f-border rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col"
+        className="w-full sm:max-w-[480px] bg-f-card border border-f-border rounded-t-2xl sm:rounded-2xl flex flex-col"
+        style={{ maxHeight: "min(92dvh, 92vh)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-f-border">
+        <div className="sm:hidden flex justify-center pt-2.5 pb-1">
+          <span className="block w-10 h-1 rounded-full bg-f-muted" aria-hidden />
+        </div>
+        <div className="flex items-center justify-between px-5 pt-3 pb-3 sm:py-4 border-b border-f-border">
           <h3 className="font-sans font-bold text-[17px] text-f-text">{title}</h3>
           <button className="f-btn-ghost -mr-2" onClick={onClose} aria-label="Cerrar">
             <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
@@ -308,8 +333,8 @@ export function Sheet({
         </div>
         {footer && (
           <div
-            className="px-5 py-4 border-t border-f-border"
-            style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))" }}
+            className="px-5 py-3 sm:py-4 border-t border-f-border"
+            style={{ paddingBottom: "max(0.875rem, env(safe-area-inset-bottom, 0px))" }}
           >
             {footer}
           </div>

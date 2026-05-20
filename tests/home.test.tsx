@@ -25,8 +25,8 @@ describe("Home — Inicio / Mi Semana", () => {
   it("renders the race countdown and weekly grid", () => {
     renderPage(<Home />);
     expect(screen.getByText("IRONMAN 5150 San Juan")).toBeInTheDocument();
-    expect(screen.getByText(/Semana 14 de 32/i)).toBeInTheDocument();
-    expect(screen.getByText(/3\/5 sesiones · 87% nutrición/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sem 14 de 32/i)).toBeInTheDocument();
+    expect(screen.getByText(/3\/5 ses · 87% nutr/i)).toBeInTheDocument();
   });
 
   it("provides contextual WhatsApp actions for the day's session", () => {

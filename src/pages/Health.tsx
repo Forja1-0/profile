@@ -67,7 +67,7 @@ function BodyData() {
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-4">
         {[
           { l: "Peso actual", v: `${b.currentWeight} kg`, s: delta ? `${delta > 0 ? "+" : ""}${delta} kg` : "última carga", tone: delta < 0 ? "#5B8A64" : "#C49A3C" },
           { l: "Altura", v: `${b.heightCm} cm`, s: "editable", tone: "#D4CFC4" },
@@ -75,7 +75,7 @@ function BodyData() {
           { l: "IMC", v: imc, s: "informativo", tone: "#8A8680" },
         ].map((x) => (
           <div key={x.l} className="f-card">
-            <div className="font-sans font-bold text-[22px]" style={{ color: x.tone }}>{x.v}</div>
+            <div className="font-sans font-bold text-[20px] sm:text-[22px]" style={{ color: x.tone }}>{x.v}</div>
             <div className="f-datalabel mt-1">{x.l}</div>
             <div className="font-mono text-[10px] text-f-text3 mt-0.5">{x.s}</div>
           </div>
