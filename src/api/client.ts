@@ -222,4 +222,39 @@ export const api = {
   getPreferences: (u: string) => request<DbPreferences | null>(`/api/profile/${u}/preferences`),
   savePreferences: (u: string, prefs: DbPreferences) =>
     request<DbPreferences>(`/api/profile/${u}/preferences`, { method: "PUT", body: JSON.stringify(prefs) }),
+
+  /* ---------- Recordatorios configurables (amateur) ---------- */
+  listReminders: (u: string) =>
+    request<{ ok: true; reminders: UserReminder[] }>(`/api/users/${u}/reminders`),
+  createReminder: (u: string, body: ReminderCreate) =>
+    request<{ ok: true; reminder: UserReminder }>(`/api/users/${u}/reminders`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateReminder: (u: string, id: string, patch: Partial<ReminderCreate>) =>
+    request<{ ok: true; reminder: UserReminder }>(`/api/users/${u}/reminders/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+  deleteReminder: (u: string, id: string) =>
+    request<{ ok: true }>(`/api/users/${u}/reminders/${id}`, { method: "DELETE" }),
 };
+
+export interface UserReminder {
+  id: string;
+  user_id: string;
+  label: string;
+  message: string;
+  cron_expr: string;
+  active: boolean;
+  last_fired_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReminderCreate {
+  label: string;
+  message: string;
+  cron_expr: string;
+  active?: boolean;
+}

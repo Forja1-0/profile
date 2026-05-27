@@ -9,16 +9,22 @@ export type DayState = "done" | "skipped" | "rest" | "future" | "today";
 export type SessionType = "gym" | "swim" | "bike" | "run" | "rest";
 export type Plan = "toyota" | "audi" | "ferrari";
 
-export const athlete = {
+export const athlete: {
+  name: string; firstName: string; age: number; sex: string; email: string;
+  phone: string; plan: Plan; profileCompleteness: number; memberSince: string;
+  personalGoal?: string;
+} = {
   name: "Rocío Mendoza",
   firstName: "Rocío",
   age: 31,
   sex: "Femenino",
   email: "rocio.mendoza@gmail.com",
   phone: "+54 9 264 512 7788",
-  plan: "audi" as Plan,
+  plan: "audi",
   profileCompleteness: 78,
   memberSince: "2026-02-08",
+  // En amateur, esta es la meta libre del usuario. En elite queda undefined.
+  personalGoal: "Bajar 5 kg y mantenerme",
 };
 
 export const race = {
