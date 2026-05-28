@@ -11,8 +11,10 @@ import { Journey } from "./pages/Journey";
 import { Settings } from "./pages/Settings";
 import { Subscription } from "./pages/Subscription";
 import { Login } from "./pages/Login";
+import { Gate } from "./pages/Gate";
 import { Reminders } from "./pages/Reminders";
 import { isAmateur, isElite } from "./lib/mode";
+import { currentUserId } from "./api/client";
 
 /**
  * /login es la unica ruta fuera del ProfileDataProvider/ProfileLayout: no
@@ -35,6 +37,11 @@ function Routed() {
         <Route path="/login" element={<Login />} />
       </Routes>
     );
+  }
+  // Sin sesión (ni override de dev): no montamos el perfil con datos vacíos —
+  // mostramos el gate que invita a entrar por WhatsApp. Sin modo demo.
+  if (!currentUserId()) {
+    return <Gate />;
   }
   return (
     <ProfileShell>

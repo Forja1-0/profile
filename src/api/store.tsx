@@ -13,11 +13,16 @@ import {
 } from "./client";
 import {
   buildHome, buildNutrition, buildTraining, buildHealth, buildJourney, mealFromDb, mealToPayload,
+  type MealLogEntry,
 } from "./transformers";
+// `mock` se usa SOLO para tipos (typeof). Ningún valor demo se renderiza en
+// modo live: sin datos mostramos vacío honesto (emptyBundle).
 import * as mock from "../data/mock";
 import type { FrequentMeal } from "../data/mock";
 
-export type Source = "demo" | "live";
+// "live": datos reales del backend. "error": no pudimos conectar (mostramos
+// estado vacío + aviso, NUNCA datos de ejemplo).
+export type Source = "live" | "error";
 
 export interface Bundle {
   athlete: typeof mock.athlete;
@@ -46,22 +51,51 @@ export interface Bundle {
   scoreSeries: typeof mock.scoreSeries;
   scoreStats: typeof mock.scoreStats;
   journeyTotals: typeof mock.journeyTotals;
+  recentMeals: MealLogEntry[];
 }
 
-function demoBundle(): Bundle {
+/**
+ * Bundle vacío honesto: ceros, "—" y arrays vacíos. Es el estado inicial
+ * (mientras carga) y el estado de error. NUNCA mostramos datos de ejemplo:
+ * un usuario logueado solo ve lo que realmente cargó.
+ */
+function emptyBundle(): Bundle {
   return {
-    athlete: mock.athlete, race: mock.race, today: mock.today, week: mock.week,
-    weekSummary: mock.weekSummary, monthly: mock.monthly,
-    streaks: mock.streaks as Bundle["streaks"],
-    nutritionPlan: mock.nutritionPlan, restrictions: mock.restrictions,
-    nutritionHistory: mock.nutritionHistory, weeklyPlan: mock.weeklyPlan,
-    sessionHistory: mock.sessionHistory, sessionStats: mock.sessionStats,
-    personalRecords: mock.personalRecords, bodyData: mock.bodyData,
-    activeInjuries: mock.activeInjuries, pastInjuries: mock.pastInjuries,
-    chronic: mock.chronic, allergies: mock.allergies, medication: mock.medication,
-    clinicalDocs: mock.clinicalDocs, timeline: mock.timeline,
-    journeyCards: mock.journeyCards, scoreSeries: mock.scoreSeries,
-    scoreStats: mock.scoreStats, journeyTotals: mock.journeyTotals,
+    athlete: {
+      name: "", firstName: "", age: 0, sex: "", email: "", phone: "",
+      plan: "toyota", profileCompleteness: 0, memberSince: "", personalGoal: null,
+    },
+    race: { name: "", date: "", weekCurrent: 0, weekTotal: 0 },
+    today: {
+      date: "", score: 0,
+      macros: { kcal: { value: 0, target: 0 }, protein: { value: 0, target: 0 }, carbs: { value: 0, target: 0 }, fat: { value: 0, target: 0 } },
+      session: { type: "rest", title: "", time: "—", status: "pending", rpe: null },
+      scoreBreakdown: { nutrition: 0, training: 0, consistency: 0 },
+    },
+    week: [],
+    weekSummary: { sessionsDone: 0, sessionsPlanned: 0, nutritionPct: 0 },
+    monthly: { sessionsDone: 0, nutritionPct: null },
+    streaks: [] as unknown as Bundle["streaks"],
+    nutritionPlan: { protein: 0, carbs: 0, fat: 0, kcal: 0, nutritionist: "—", hasPdf: false, history: [] },
+    restrictions: [],
+    nutritionHistory: [],
+    weeklyPlan: [],
+    sessionHistory: [],
+    sessionStats: { done: 0, planned: 0, rate: 0, avgRpe: 0 },
+    personalRecords: [],
+    bodyData: { heightCm: 0, currentWeight: 0, bodyFat: 0, weightHistory: [] },
+    activeInjuries: [],
+    pastInjuries: [],
+    chronic: [],
+    allergies: [],
+    medication: [],
+    clinicalDocs: [],
+    timeline: [],
+    journeyCards: [],
+    scoreSeries: [],
+    scoreStats: { current: 0, avg7: 0, avg30: 0, avg90: 0, percentile: 0 },
+    journeyTotals: { sessions: 0, mealsLogged: 0, maxStreak: 0, prs: 0, injuriesBeat: 0, slipsRecovered: 0, weeksOver90: 0 },
+    recentMeals: [],
   };
 }
 
@@ -119,21 +153,31 @@ interface Ctx {
 
 const ProfileCtx = createContext<Ctx | null>(null);
 
+// Defaults de configuración (no son datos demo de progreso: son los
+// recordatorios/preferencias por defecto de una cuenta nueva). Se mergean con
+// lo que devuelva el backend.
 const DEFAULT_PREFS: DbPreferences = {
-  reminders: mock.reminders.map((r) => ({ ...r })),
-  custom_reminders: mock.customReminders.map((c) => ({ ...c })),
-  quiet_hours: { ...mock.quietHours },
+  reminders: [
+    { id: "r1", label: "Recordatorio matutino", sub: "Qué sesión toca hoy", time: "06:00", on: true },
+    { id: "r2", label: "Recordatorio almuerzo", sub: "¿Ya almorzaste?", time: "13:00", on: true },
+    { id: "r3", label: "Recordatorio merienda", sub: "¿Ya merendaste?", time: "17:00", on: false },
+    { id: "r4", label: "Resumen nocturno", sub: "Balance del día", time: "21:00", on: true },
+    { id: "r5", label: "Alerta de no-cumplimiento", sub: "Si kcal <85% del target", time: "22:30", on: true },
+    { id: "r6", label: "Resumen semanal", sub: "Domingos", time: "20:00", on: true },
+  ],
+  custom_reminders: [],
+  quiet_hours: { from: "23:00", to: "06:00" },
   alert_threshold_pct: 85,
-  bot_tone: mock.botTone,
+  bot_tone: "rocky",
   privacy: { rank: true, community_avg: true, newsletter: false },
 };
 
 export function ProfileDataProvider({ children }: { children: ReactNode }) {
-  const [source, setSource] = useState<Source>("demo");
+  const [source, setSource] = useState<Source>("live");
   const [loading, setLoading] = useState<boolean>(!!currentUserId());
   const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<Bundle>(demoBundle);
-  const [meals, setMeals] = useState<FrequentMeal[]>(mock.frequentMeals);
+  const [data, setData] = useState<Bundle>(emptyBundle);
+  const [meals, setMeals] = useState<FrequentMeal[]>([]);
   const [raw, setRaw] = useState<Raw>({ identity: null, nutrition: null, health: null });
   const [documents, setDocuments] = useState<DbDocument[]>([]);
   const [preferences, setPreferences] = useState<DbPreferences>(DEFAULT_PREFS);
@@ -172,8 +216,11 @@ export function ProfileDataProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         if (cancelled) return;
         const msg = e instanceof ApiError ? `API ${e.status}: ${e.message}` : (e as Error).message;
-        setError(`Sin conexión al backend (${msg}). Mostrando datos demo.`);
-        setSource("demo");
+        // Sin datos de ejemplo: estado vacío + aviso honesto de error.
+        setError(`No pudimos cargar tus datos (${msg}). Reintentá en unos minutos.`);
+        setData(emptyBundle());
+        setMeals([]);
+        setSource("error");
       } finally {
         if (!cancelled) setLoading(false);
       }

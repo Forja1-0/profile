@@ -197,19 +197,18 @@ function StatusBanner() {
   if (loading) {
     return (
       <div className="mb-4 flex items-center gap-2.5 rounded-lg border border-f-border bg-f-surface px-4 py-2.5 text-[12px] text-f-text2">
-        <span className="material-symbols-outlined animate-spin" style={{ fontSize: 15 }}>progressactivity</span>
-        Conectando…
+        <span className="f-spinner" style={{ width: 14, height: 14 }} />
+        Cargando tus datos…
       </div>
     );
   }
   if (source === "live") return null;
+  // source === "error": sin datos de ejemplo, solo el aviso honesto.
   return (
     <div className="mb-4 flex items-center gap-2.5 rounded-lg px-4 py-2.5 text-[12px]"
-         style={{ background: "rgba(196,154,60,0.10)", border: "1px solid rgba(196,154,60,0.25)", color: "#C49A3C" }}>
-      <span className="material-symbols-outlined" style={{ fontSize: 15 }}>science</span>
-      {error
-        ? "Estamos en modo demo: los numeros que ves son de ejemplo. Entrá desde WhatsApp para ver tus datos."
-        : "Modo demo · entrá desde WhatsApp escribiendo \"perfil\" para ver tus datos."}
+         style={{ background: "rgba(168,64,77,0.10)", border: "1px solid rgba(168,64,77,0.28)", color: "#D98A93" }}>
+      <span className="material-symbols-outlined" style={{ fontSize: 15 }}>cloud_off</span>
+      {error ?? "No pudimos cargar tus datos. Reintentá en unos minutos."}
     </div>
   );
 }

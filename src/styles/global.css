@@ -254,6 +254,20 @@ select.f-input { appearance: none; cursor: pointer; }
 @keyframes f-pulse { 0%,100% { opacity: 0.45; transform: scale(1); } 50% { opacity: 0.85; transform: scale(1.05); } }
 .f-pulse { animation: f-pulse 2.4s ease-in-out infinite; }
 
+/* Spinner CSS puro: NO depende de la fuente Material Symbols. Antes el spinner
+   era <span class="material-symbols-outlined animate-spin">progressactivity</span>
+   y, mientras la fuente de iconos no cargaba, se veia la palabra literal
+   "progressactivity" girando 360°. Este circulo con borde nunca tiene ese bug. */
+@keyframes f-spin { to { transform: rotate(360deg); } }
+.f-spinner {
+  display: inline-block;
+  border-radius: 9999px;
+  border: 2px solid rgba(91,138,100,0.25);
+  border-top-color: #5B8A64;
+  animation: f-spin .7s linear infinite;
+  flex: none;
+}
+
 /* ============ Field with suffix (shared) ============ */
 .f-field { position: relative; }
 .f-field .f-suffix {

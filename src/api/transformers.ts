@@ -8,9 +8,73 @@
  * la DB sí tiene, sin inventar columnas.
  */
 import type {
-  DbOverview, DbNutrition, DbTraining, DbHealth, DbJourney, DbFrequentMeal, DbProfileIdentity,
+  DbOverview, DbNutrition, DbTraining, DbHealth, DbJourney, DbFrequentMeal, DbProfileIdentity, DbMealLog,
 } from "./client";
+// `mock` se usa SOLO como fuente de TIPOS (typeof / shapes). En modo live nunca
+// renderizamos valores demo: si el backend no tiene un dato, mostramos vacío
+// honesto. Catálogos de opciones (restricciones) viven acá, no en mock.
 import * as mock from "../data/mock";
+
+/** Catálogo de restricciones (opciones de la UI, no estado fabricado del usuario). */
+const RESTRICTION_CATALOG: { id: string; label: string; active: boolean }[] = [
+  { id: "lactose", label: "Intolerancia a lactosa", active: false },
+  { id: "pork", label: "No come cerdo", active: false },
+  { id: "beef", label: "No carne vacuna", active: false },
+  { id: "chicken", label: "No pollo", active: false },
+  { id: "fish", label: "No pescado", active: false },
+  { id: "egg", label: "No huevo", active: false },
+  { id: "celiac", label: "Celíaco", active: false },
+  { id: "vegan", label: "Vegano", active: false },
+  { id: "vegetarian", label: "Vegetariano", active: false },
+];
+
+const EMPTY_MACROS = {
+  kcal: { value: 0, target: 0 },
+  protein: { value: 0, target: 0 },
+  carbs: { value: 0, target: 0 },
+  fat: { value: 0, target: 0 },
+};
+const EMPTY_SESSION = {
+  type: "rest" as mock.SessionType,
+  title: "",
+  time: "—",
+  status: "pending" as "pending" | "done" | "skipped",
+  rpe: null as number | null,
+};
+const EMPTY_RACE = { name: "", date: "", weekCurrent: 0, weekTotal: 0 };
+
+/** Comida real cargada por el usuario (meal_logs) → shape de la UI. */
+export interface MealLogEntry {
+  id: string;
+  date: string;
+  time: string;
+  title: string;
+  kcal: number;
+  p: number;
+  c: number;
+  f: number;
+  isEstimate: boolean;
+}
+
+export function mealLogFromDb(m: DbMealLog): MealLogEntry {
+  const names = (m.parsed_items ?? [])
+    .map((it) => (it && (it.name ?? it.food)) || "")
+    .filter((x) => !!x);
+  const raw = (m.raw_input ?? "").trim();
+  const title = names.length ? names.join(", ") : raw || "Comida";
+  const d = new Date(m.logged_at);
+  return {
+    id: m.id,
+    date: (m.logged_at ?? "").slice(0, 10),
+    time: isNaN(d.getTime()) ? "" : d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+    title: title.length > 60 ? `${title.slice(0, 57)}…` : title,
+    kcal: Math.round(m.total_kcal),
+    p: Math.round(m.total_protein_g),
+    c: Math.round(m.total_carbs_g),
+    f: Math.round(m.total_fat_g),
+    isEstimate: m.is_estimate,
+  };
+}
 
 const DOW = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const DOW_FULL = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -117,22 +181,23 @@ function formatPersonalGoal(g: DbOverview["goal"]): string | null {
 export function buildHome(id: DbProfileIdentity, o: DbOverview) {
   const personalGoal = formatPersonalGoal(o.goal);
   const athlete = {
-    ...mock.athlete,
     name: id.name,
-    firstName: id.name.split(" ")[0],
+    firstName: id.name.split(" ")[0] || id.name,
     age: id.age,
     sex: id.sex === "F" ? "Femenino" : id.sex === "M" ? "Masculino" : "X",
     email: id.email,
     phone: id.phone_wa,
-    memberSince: id.member_since?.slice(0, 10) ?? mock.athlete.memberSince,
-    // En modo live, personalGoal viene del backend. Si no hay meta cargada,
-    // el componente HomeAmateur muestra el placeholder de "ponete una meta".
+    // Plan/completeness no tienen fuente canónica todavía: defaults neutrales,
+    // nunca el demo. memberSince real o vacío.
+    plan: "toyota" as mock.Plan,
+    profileCompleteness: 0,
+    memberSince: id.member_since?.slice(0, 10) ?? "",
     personalGoal: personalGoal ?? null,
   };
 
   // El race solo aplica al modo elite (objetivo competitivo con fecha).
-  // Para amateur el goal puede no tener event_date — en ese caso nos
-  // quedamos con el mock para no romper la UI elite.
+  // Si el goal no tiene event_date, no hay carrera → race vacío (la UI elite
+  // lo trata como "sin objetivo con fecha"), nunca el demo.
   const race = o.goal && o.goal.event_date
     ? {
         name: o.goal.event_name ?? "Tu objetivo",
@@ -143,12 +208,13 @@ export function buildHome(id: DbProfileIdentity, o: DbOverview) {
           weeksBetween(o.goal.created_at, new Date().toISOString()),
         ),
       }
-    : mock.race;
+    : EMPTY_RACE;
 
   const rem = o.remaining;
   const today = {
-    ...mock.today,
-    score: o.summaries[0]?.performance_score ?? mock.today.score,
+    date: new Date().toISOString().slice(0, 10),
+    score: o.summaries[0]?.performance_score ?? 0,
+    scoreBreakdown: { nutrition: 0, training: 0, consistency: 0 },
     macros: rem
       ? {
           kcal: { value: Math.round(rem.consumed_kcal), target: rem.target_kcal },
@@ -156,7 +222,7 @@ export function buildHome(id: DbProfileIdentity, o: DbOverview) {
           carbs: { value: Math.round(rem.consumed_carbs), target: rem.target_carbs_g },
           fat: { value: Math.round(rem.consumed_fat), target: rem.target_fat_g },
         }
-      : mock.today.macros,
+      : EMPTY_MACROS,
     session: o.todayTraining
       ? {
           type: st(o.todayTraining.session_type),
@@ -165,7 +231,7 @@ export function buildHome(id: DbProfileIdentity, o: DbOverview) {
           status: "pending" as const,
           rpe: null,
         }
-      : mock.today.session,
+      : EMPTY_SESSION,
   };
 
   const byDate = new Map(o.summaries.map((s) => [s.summary_date.slice(0, 10), s]));
@@ -188,9 +254,9 @@ export function buildHome(id: DbProfileIdentity, o: DbOverview) {
   const weekSummary = {
     sessionsDone: doneN,
     sessionsPlanned: planned,
-    // Promedio real de adherencia de la semana, no el de hoy. Si el backend
-    // no devolvio nada (sin summaries en 7d), volvemos al mock.
-    nutritionPct: o.monthly?.nutritionPct7d ?? Math.round(o.summaries[0]?.kcal_adherence_pct ?? mock.weekSummary.nutritionPct),
+    // Promedio real de adherencia de la semana. Si no hay summaries en 7d,
+    // queda en 0 (sin datos), nunca el demo.
+    nutritionPct: o.monthly?.nutritionPct7d ?? Math.round(o.summaries[0]?.kcal_adherence_pct ?? 0),
   };
 
   const monthly = {
@@ -222,19 +288,19 @@ export function buildNutrition(n: DbNutrition) {
           label: h.nutritionist_name ? `Plan — ${h.nutritionist_name}` : `Plan ${h.target_kcal} kcal`,
         })),
       }
-    : mock.nutritionPlan;
+    : { protein: 0, carbs: 0, fat: 0, kcal: 0, nutritionist: "—", hasPdf: false, history: [] as { from: string; to: string; label: string }[] };
 
   const r = n.restrictions;
   const map: Record<string, string> = {
     lactose_intolerant: "lactose", no_pork: "pork", no_beef: "beef", no_chicken: "chicken",
     no_fish: "fish", no_eggs: "egg", celiac: "celiac", vegan: "vegan", vegetarian: "vegetarian",
   };
-  const restrictions = r
-    ? mock.restrictions.map((m) => {
-        const dbKey = Object.entries(map).find(([, v]) => v === m.id)?.[0];
-        return { ...m, active: dbKey ? Boolean(r[dbKey]) : m.active };
-      })
-    : mock.restrictions;
+  // Siempre mostramos el catálogo completo de opciones; las activas vienen de
+  // la DB (si no hay fila, todas inactivas). Nunca el demo.
+  const restrictions = RESTRICTION_CATALOG.map((m) => {
+    const dbKey = Object.entries(map).find(([, v]) => v === m.id)?.[0];
+    return { ...m, active: dbKey && r ? Boolean(r[dbKey]) : false };
+  });
 
   const nutritionHistory = n.summaries.map((s) => ({
     date: s.summary_date.slice(0, 10),
@@ -246,7 +312,9 @@ export function buildNutrition(n: DbNutrition) {
     adherence: Math.round(s.kcal_adherence_pct ?? 0),
   }));
 
-  return { nutritionPlan, restrictions, nutritionHistory };
+  const recentMeals = (n.recentMeals ?? []).map(mealLogFromDb);
+
+  return { nutritionPlan, restrictions, nutritionHistory, recentMeals };
 }
 
 export function buildTraining(t: DbTraining) {
@@ -263,7 +331,11 @@ export function buildTraining(t: DbTraining) {
             }
           : { day: DOW_FULL[dow], type: "rest" as mock.SessionType, desc: "Descanso", time: "—", mandatory: false };
       })
-    : mock.weeklyPlan;
+    : // Sin plan cargado: semana neutra de descanso (la UI invita a cargar plan),
+      // nunca el demo.
+      Array.from({ length: 7 }).map((_, dow) => ({
+        day: DOW_FULL[dow], type: "rest" as mock.SessionType, desc: "Sin sesión", time: "—", mandatory: false,
+      }));
 
   const sessionHistory = t.logs.slice(0, 12).map((l) => ({
     date: l.logged_at.slice(0, 10),
@@ -364,7 +436,7 @@ export function buildJourney(j: DbJourney, race: typeof mock.race) {
         avg7: avg(scoreSeries.slice(-7)),
         avg30: avg(scoreSeries.slice(-30)),
         avg90: avg(scoreSeries),
-        percentile: mock.scoreStats.percentile,
+        percentile: 0,
       }
     : { current: 0, avg7: 0, avg30: 0, avg90: 0, percentile: 0 };
 

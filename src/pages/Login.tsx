@@ -16,6 +16,8 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { API_BASE } from "../api/client";
 import { setSession } from "../api/session";
+import { Brandmark, Wordmark } from "../components/ui";
+import { waActions } from "../lib/whatsapp";
 
 type Status = "loading" | "ok" | "missing" | "invalid" | "network";
 
@@ -63,49 +65,79 @@ export function Login() {
     return () => { cancelled = true; };
   }, [params]);
 
+  // Estados que requieren reintentar desde WhatsApp muestran el CTA.
+  const showWaCta = status === "missing" || status === "invalid" || status === "network";
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-neutral-200 p-8 text-center">
+    <div className="min-h-dvh flex items-center justify-center px-4 bg-[#09090b] relative overflow-hidden">
+      <div className="ambient" aria-hidden="true">
+        <div className="orb orb-green" />
+        <div className="orb orb-red" />
+        <div className="grain" />
+      </div>
+
+      <div className="relative max-w-md w-full f-card text-center f-fade-up">
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <Brandmark size={32} />
+          <Wordmark size={17} />
+        </div>
+
         {status === "loading" && (
           <>
-            <div className="text-2xl font-semibold mb-2">Abriendo tu perfil…</div>
-            <div className="text-neutral-500">Validando el acceso desde WhatsApp.</div>
+            <span className="f-spinner mx-auto mb-4" style={{ width: 30, height: 30, borderWidth: 3 }} />
+            <div className="text-[20px] font-bold text-f-text mb-1.5">Abriendo tu perfil…</div>
+            <div className="text-[14px] text-f-text2">Validando tu acceso desde WhatsApp.</div>
           </>
         )}
+
         {status === "ok" && (
           <>
-            <div className="text-2xl font-semibold mb-2">¡Listo!</div>
-            <div className="text-neutral-500">Redirigiendo…</div>
+            <span className="material-symbols-outlined text-f-green-glow mb-2" style={{ fontSize: 40 }}>check_circle</span>
+            <div className="text-[20px] font-bold text-f-text mb-1.5">¡Listo!</div>
+            <div className="text-[14px] text-f-text2">Te llevamos a tu perfil…</div>
           </>
         )}
+
         {status === "missing" && (
           <>
-            <div className="text-2xl font-semibold mb-2">Falta el token</div>
-            <div className="text-neutral-500">
-              El link no incluye un token. Volvé a WhatsApp y escribí <b>perfil</b> para recibir uno nuevo.
+            <span className="material-symbols-outlined text-f-text3 mb-2" style={{ fontSize: 38 }}>link_off</span>
+            <div className="text-[20px] font-bold text-f-text mb-1.5">Falta el código de acceso</div>
+            <div className="text-[14px] text-f-text2">
+              Este link no trae un código. Volvé a WhatsApp y escribí <b className="text-f-text">perfil</b> para recibir uno nuevo.
             </div>
           </>
         )}
+
         {status === "invalid" && (
           <>
-            <div className="text-2xl font-semibold mb-2">Link inválido o vencido</div>
-            <div className="text-neutral-500 mb-2">
-              {reason === "token_expired"
-                ? "El link venció (válido por 15 minutos)."
-                : reason === "token_already_used"
-                  ? "Este link ya se usó."
-                  : "No pudimos validar el link."}
+            <span className="material-symbols-outlined text-f-text3 mb-2" style={{ fontSize: 38 }}>schedule</span>
+            <div className="text-[20px] font-bold text-f-text mb-1.5">
+              {reason === "token_already_used" ? "Este link ya se usó" : "Link vencido"}
             </div>
-            <div className="text-neutral-500">
-              Volvé a WhatsApp y escribí <b>perfil</b> para recibir uno nuevo.
+            <div className="text-[14px] text-f-text2">
+              {reason === "token_expired"
+                ? "Los links valen 15 minutos por seguridad."
+                : reason === "token_already_used"
+                  ? "Cada link sirve una sola vez."
+                  : "No pudimos validar el link."}{" "}
+              Pedí uno nuevo escribiendo <b className="text-f-text">perfil</b> en WhatsApp.
             </div>
           </>
         )}
+
         {status === "network" && (
           <>
-            <div className="text-2xl font-semibold mb-2">Sin conexión</div>
-            <div className="text-neutral-500">No pudimos conectar con el servidor. Probá de nuevo en unos minutos.</div>
+            <span className="material-symbols-outlined text-f-text3 mb-2" style={{ fontSize: 38 }}>cloud_off</span>
+            <div className="text-[20px] font-bold text-f-text mb-1.5">Sin conexión</div>
+            <div className="text-[14px] text-f-text2">No pudimos conectar con el servidor. Probá de nuevo en unos minutos.</div>
           </>
+        )}
+
+        {showWaCta && (
+          <a href={waActions.open} target="_blank" rel="noreferrer" className="f-btn f-btn-wa w-full mt-6">
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chat</span>
+            Abrir Forja en WhatsApp
+          </a>
         )}
       </div>
     </div>

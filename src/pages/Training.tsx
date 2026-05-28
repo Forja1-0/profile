@@ -120,7 +120,7 @@ function computeAdherence(sessions: typeof import("../data/mock").sessionHistory
 }
 
 function SessionHistory() {
-  const { data, source } = useProfileData();
+  const { data } = useProfileData();
   const [weeks, setWeeks] = useState<4 | 8 | 12 | "todo">(8);
 
   const STATUS: Record<string, { tone: "green" | "red" | "warn"; label: string }> = {
@@ -131,7 +131,7 @@ function SessionHistory() {
 
   const hasData = data.sessionHistory.length > 0 || data.sessionStats.done > 0;
 
-  if (!hasData && source === "live") {
+  if (!hasData) {
     return (
       <EmptyState
         icon="fitness_center"
@@ -141,14 +141,8 @@ function SessionHistory() {
     );
   }
 
-  // Demo mode: fake adherence; live mode: compute from real sessions
-  const nWeeks = weeks === "todo" ? 12 : weeks;
-  const adherence = source === "demo"
-    ? Array.from({ length: nWeeks }).map((_, i) => ({
-        label: `S${i + 1}`,
-        v: Math.max(60, Math.min(100, Math.round(88 + Math.sin(i * 1.2) * 14))),
-      }))
-    : computeAdherence(data.sessionHistory, weeks);
+  // Adherencia real calculada desde las sesiones del usuario (sin datos demo).
+  const adherence = computeAdherence(data.sessionHistory, weeks);
 
   return (
     <>

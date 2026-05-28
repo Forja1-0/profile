@@ -145,7 +145,7 @@ export function HomeAmateur() {
         <Callout>
           {source === "live"
             ? "A la noche Forja revisa el dia y te manda un resumen — con tu meta como brujula."
-            : "Estos numeros son de ejemplo. Entrá desde WhatsApp para ver los tuyos."}
+            : "No pudimos cargar tus datos ahora. Reintentá en unos minutos."}
         </Callout>
       </div>
     </>

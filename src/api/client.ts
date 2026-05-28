@@ -104,11 +104,25 @@ export interface DbFrequentMeal {
   created_at: string;
 }
 
+export interface DbMealLog {
+  id: string;
+  input_mode: "quick" | "descriptive" | "precise";
+  raw_input: string;
+  parsed_items: Array<{ name?: string; food?: string; grams?: number; kcal?: number }> | null;
+  total_kcal: number;
+  total_protein_g: number;
+  total_carbs_g: number;
+  total_fat_g: number;
+  is_estimate: boolean;
+  logged_at: string;
+}
+
 export interface DbNutrition {
   active: { target_kcal: number; target_protein_g: number; target_carbs_g: number; target_fat_g: number; nutritionist_name: string | null; plan_file_url: string | null } | null;
   history: Array<{ id: string; target_kcal: number; nutritionist_name: string | null; is_active: boolean; created_at: string }>;
   restrictions: Record<string, boolean | string | null> | null;
   summaries: Array<{ summary_date: string; total_kcal: number; total_protein_g: number; total_carbs_g: number; total_fat_g: number; kcal_adherence_pct: number | null }>;
+  recentMeals: DbMealLog[];
 }
 
 export interface DbTraining {

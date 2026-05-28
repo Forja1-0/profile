@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { foodTable, type FrequentMeal, type Ingredient } from "../data/mock";
 import { useProfileData } from "../api/store";
 import { api } from "../api/client";
-import { restrictionsToFlags } from "../api/transformers";
+import { restrictionsToFlags, type MealLogEntry } from "../api/transformers";
 import { waActions } from "../lib/whatsapp";
 import { isAmateur } from "../lib/mode";
 import {
@@ -254,7 +254,7 @@ function MealEditor({ meal, onClose, onSave }: { meal: FrequentMeal | null; onCl
           <input
             className="f-input"
             value={query}
-            placeholder={source === "live" ? "Buscar en los 913 alimentos argentinos…" : "Buscar (modo demo)…"}
+            placeholder={source === "live" ? "Buscar en los 913 alimentos argentinos…" : "Buscar alimento…"}
             onChange={(e) => setQuery(e.target.value)}
           />
           {(hits.length > 0 || searching) && (
@@ -534,6 +534,42 @@ const MACRO_META: Record<Exclude<MacroFilter, "todo">, { label: string; color: s
   f: { label: "Grasa", color: "#C9A24B" },
 };
 
+/** Lista de comidas REALES cargadas por el usuario (meal_logs). */
+function RecentMealsCard({ meals }: { meals: MealLogEntry[] }) {
+  if (!meals.length) {
+    return (
+      <EmptyState
+        icon="restaurant"
+        title="Sin comidas registradas aún"
+        hint="Decile al bot lo que comiste por WhatsApp (ej: «comí 2 huevos con pan») y aparece acá al instante."
+      />
+    );
+  }
+  return (
+    <div className="f-card !p-0 overflow-hidden mb-4">
+      <div className="px-5 py-3 border-b border-f-border f-datalabel">Comidas registradas</div>
+      <div className="divide-y divide-f-border">
+        {meals.slice(0, 30).map((m) => (
+          <div key={m.id} className="px-4 sm:px-5 py-3 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-[14px] text-f-text truncate">
+                {m.title}
+                {m.isEstimate && (
+                  <span className="ml-2 font-mono text-[10px] text-f-text3 align-middle">estimado</span>
+                )}
+              </div>
+              <div className="font-mono text-[11px] text-f-text3 mt-0.5">
+                {m.date.slice(5)}{m.time ? ` · ${m.time}` : ""} · P {m.p} · C {m.c} · G {m.f}
+              </div>
+            </div>
+            <div className="font-mono text-[12px] text-f-text flex-none">{m.kcal} kcal</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function NutritionHistory() {
   const { data } = useProfileData();
   const plan = data.nutritionPlan;
@@ -542,16 +578,6 @@ function NutritionHistory() {
 
   const allHistory = data.nutritionHistory;
   const historyData = range === "todo" ? allHistory : allHistory.slice(-range);
-
-  if (allHistory.length === 0) {
-    return (
-      <EmptyState
-        icon="bar_chart"
-        title="Sin historial nutricional aún"
-        hint="El bot registra lo que comés por WhatsApp. Volvé en unos días para ver tu tendencia."
-      />
-    );
-  }
 
   const isTodo = macro === "todo";
   const singleMeta = isTodo ? null : MACRO_META[macro];
@@ -580,6 +606,17 @@ function NutritionHistory() {
 
   return (
     <>
+      {/* Comidas reales cargadas por WhatsApp — aparecen al instante. */}
+      <RecentMealsCard meals={data.recentMeals} />
+
+      {allHistory.length === 0 ? (
+        <EmptyState
+          icon="bar_chart"
+          title="Sin tendencia todavía"
+          hint="La tendencia diaria (adherencia, promedios) se arma con tus comidas. Volvé en unos días para verla."
+        />
+      ) : (
+      <>
       <div className="flex flex-col sm:flex-row sm:justify-between gap-2 mb-4">
         <div className="flex flex-wrap gap-2">
           {([7, 14, 30, 90] as const).map((r) => (
@@ -665,6 +702,8 @@ function NutritionHistory() {
             </table>
           </div>
         </div>
+      )}
+      </>
       )}
     </>
   );
