@@ -65,14 +65,22 @@ function BodyData() {
     { l: "Editar altura", ph: String(b.heightCm), u: "cm", k: "height_cm" as const, val: vals.height, set: (x: string) => setVals((v) => ({ ...v, height: x })) },
   ];
 
+  const hasBodyData = b.currentWeight > 0 || b.heightCm > 0;
+
   return (
     <>
+      {!hasBodyData && (
+        <div className="f-card-soft mb-4 text-[13px] text-f-text2">
+          <span className="material-symbols-outlined align-middle mr-2 text-f-text3" style={{ fontSize: 18 }}>info</span>
+          Cargá tu peso, altura y % graso abajo para que el bot los use como contexto.
+        </div>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-4">
         {[
-          { l: "Peso actual", v: `${b.currentWeight} kg`, s: delta ? `${delta > 0 ? "+" : ""}${delta} kg` : "última carga", tone: delta < 0 ? "#5B8A64" : "#C49A3C" },
-          { l: "Altura", v: `${b.heightCm} cm`, s: "editable", tone: "#D4CFC4" },
-          { l: "% graso", v: `${b.bodyFat}%`, s: "última carga", tone: "#D4CFC4" },
-          { l: "IMC", v: imc, s: "informativo", tone: "#8A8680" },
+          { l: "Peso actual", v: b.currentWeight > 0 ? `${b.currentWeight} kg` : "—", s: delta ? `${delta > 0 ? "+" : ""}${delta} kg` : "sin datos", tone: delta < 0 ? "#5B8A64" : "#C49A3C" },
+          { l: "Altura", v: b.heightCm > 0 ? `${b.heightCm} cm` : "—", s: "editable", tone: "#D4CFC4" },
+          { l: "% graso", v: b.bodyFat > 0 ? `${b.bodyFat}%` : "—", s: "última carga", tone: "#D4CFC4" },
+          { l: "IMC", v: imc > 0 ? imc : "—", s: "informativo", tone: "#8A8680" },
         ].map((x) => (
           <div key={x.l} className="f-card">
             <div className="font-sans font-bold text-[20px] sm:text-[22px]" style={{ color: x.tone }}>{x.v}</div>
@@ -85,12 +93,22 @@ function BodyData() {
       <div className="f-card mb-4">
         <div className="flex items-center justify-between mb-3">
           <span className="f-datalabel">Evolución de peso</span>
-          <span className="font-mono text-[11px] text-f-green-light">{delta} kg</span>
+          {delta !== 0 && <span className="font-mono text-[11px] text-f-green-light">{delta > 0 ? "+" : ""}{delta} kg</span>}
         </div>
-        <AreaChart data={b.weightHistory.map((w) => w.kg)} color="#5B8A64" height={150} />
-        <div className="flex justify-between mt-2 font-mono text-[9px] text-f-text3">
-          <span>{b.weightHistory[0]?.date}</span><span>{b.weightHistory.at(-1)?.date}</span>
-        </div>
+        {b.weightHistory.length >= 2 ? (
+          <>
+            <AreaChart data={b.weightHistory.map((w) => w.kg)} color="#5B8A64" height={150} />
+            <div className="flex justify-between mt-2 font-mono text-[9px] text-f-text3">
+              <span>{b.weightHistory[0]?.date}</span><span>{b.weightHistory.at(-1)?.date}</span>
+            </div>
+          </>
+        ) : (
+          <div className="py-6 text-center">
+            <span className="material-symbols-outlined text-f-text3 mb-2" style={{ fontSize: 32 }}>monitor_weight</span>
+            <p className="text-[13px] text-f-text2 mt-2">Reportá tu peso al bot periódicamente para ver la evolución aquí.</p>
+            <p className="text-[11px] text-f-text3 mt-1">Ej: «Pesé 72 kg hoy»</p>
+          </div>
+        )}
       </div>
 
       <div className="grid sm:grid-cols-3 gap-3">

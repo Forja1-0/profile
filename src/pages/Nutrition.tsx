@@ -525,23 +525,67 @@ function Restrictions() {
 }
 
 /* ---------------- 2.4 Historial Nutricional ---------------- */
+type MacroFilter = "kcal" | "p" | "c" | "f" | "todo";
+
+const MACRO_META: Record<Exclude<MacroFilter, "todo">, { label: string; color: string }> = {
+  kcal: { label: "Kcal", color: "#5B8A64" },
+  p: { label: "Proteína", color: "#C49A3C" },
+  c: { label: "Carbohidratos", color: "#A8404D" },
+  f: { label: "Grasa", color: "#C9A24B" },
+};
+
 function NutritionHistory() {
   const { data } = useProfileData();
   const plan = data.nutritionPlan;
-  const [range, setRange] = useState<7 | 14 | 30 | 90>(14);
-  const [macro, setMacro] = useState<"kcal" | "p" | "c" | "f">("kcal");
-  const historyData = data.nutritionHistory.slice(-Math.min(range, data.nutritionHistory.length));
-  const avg = historyData.length > 0 ? Math.round(historyData.reduce((a, d) => a + d[macro], 0) / historyData.length) : 0;
-  const target = macro === "kcal" ? plan.kcal : macro === "p" ? plan.protein : macro === "c" ? plan.carbs : plan.fat;
-  const macroLabel = { kcal: "Kcal", p: "Proteína", c: "Carbohidratos", f: "Grasa" }[macro];
+  const [range, setRange] = useState<7 | 14 | 30 | 90 | "todo">(14);
+  const [macro, setMacro] = useState<MacroFilter>("kcal");
+
+  const allHistory = data.nutritionHistory;
+  const historyData = range === "todo" ? allHistory : allHistory.slice(-range);
+
+  if (allHistory.length === 0) {
+    return (
+      <EmptyState
+        icon="bar_chart"
+        title="Sin historial nutricional aún"
+        hint="El bot registra lo que comés por WhatsApp. Volvé en unos días para ver tu tendencia."
+      />
+    );
+  }
+
+  const isTodo = macro === "todo";
+  const singleMeta = isTodo ? null : MACRO_META[macro];
+  const singleTarget = macro === "kcal" ? plan.kcal : macro === "p" ? plan.protein : macro === "c" ? plan.carbs : macro === "f" ? plan.fat : 0;
+  const singleAvg = !isTodo && historyData.length > 0
+    ? Math.round(historyData.reduce((a, d) => a + d[macro as Exclude<MacroFilter, "todo">], 0) / historyData.length)
+    : 0;
+
+  // "Todo": mostrar todas las series normalizadas como % del target (escala comparable)
+  const todoSeries = isTodo
+    ? (Object.entries(MACRO_META) as [Exclude<MacroFilter, "todo">, typeof MACRO_META[keyof typeof MACRO_META]][]).map(([key, meta]) => {
+        const tgt = key === "kcal" ? plan.kcal : key === "p" ? plan.protein : key === "c" ? plan.carbs : plan.fat;
+        return {
+          data: historyData.map((d) => tgt > 0 ? Math.round((d[key] / tgt) * 100) : 0),
+          color: meta.color,
+          name: meta.label,
+        };
+      })
+    : null;
+
+  const chartLabels = [
+    historyData[0]?.date.slice(5),
+    historyData[Math.floor(historyData.length / 2)]?.date.slice(5),
+    historyData[historyData.length - 1]?.date.slice(5),
+  ].filter(Boolean);
 
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:justify-between gap-2 mb-4">
         <div className="flex flex-wrap gap-2">
           {([7, 14, 30, 90] as const).map((r) => (
-            <button key={r} className="f-tab" aria-selected={range === r} onClick={() => setRange(r)}>{r} días</button>
+            <button key={r} className="f-tab" aria-selected={range === r} onClick={() => setRange(r)}>{r}d</button>
           ))}
+          <button className="f-tab" aria-selected={range === "todo"} onClick={() => setRange("todo")}>Todo</button>
         </div>
         <div className="flex flex-wrap gap-2">
           {(["kcal", "p", "c", "f"] as const).map((mm) => (
@@ -549,49 +593,79 @@ function NutritionHistory() {
               {{ kcal: "Kcal", p: "P", c: "C", f: "G" }[mm]}
             </button>
           ))}
+          <button className="f-tab" aria-selected={macro === "todo"} onClick={() => setMacro("todo")}>Todo</button>
         </div>
       </div>
 
       <div className="f-card">
         <div className="flex items-center justify-between mb-4">
-          <span className="f-datalabel">{macroLabel} — consumido vs. target</span>
-          <span className="font-mono text-[11px] text-f-text2">
-            Promedio <span className="text-f-text">{avg}</span> · target {target}
+          <span className="f-datalabel">
+            {isTodo ? "Todos los macros — % del target" : `${singleMeta!.label} — consumido vs. target`}
           </span>
+          {!isTodo && (
+            <span className="font-mono text-[11px] text-f-text2">
+              Prom. <span className="text-f-text">{singleAvg}</span> · target {singleTarget}
+            </span>
+          )}
         </div>
-        <LineChart
-          height={180}
-          labels={[historyData[0]?.date.slice(5), historyData[Math.floor(historyData.length / 2)]?.date.slice(5), historyData[historyData.length - 1]?.date.slice(5)].filter(Boolean)}
-          series={[
-            { data: historyData.map((d) => d[macro]), color: "#5B8A64" },
-            { data: historyData.map(() => target), color: "#524F4A", dashed: true },
-          ]}
-        />
-        <div className="flex gap-5 mt-3">
-          <span className="flex items-center gap-1.5 text-[11px] text-f-text2"><i className="w-3 h-0.5 bg-f-green-light inline-block" /> Consumido</span>
-          <span className="flex items-center gap-1.5 text-[11px] text-f-text2"><i className="w-3 h-0.5 bg-f-text3 inline-block" /> Target</span>
-        </div>
+
+        {isTodo ? (
+          <>
+            <LineChart
+              height={180}
+              labels={chartLabels}
+              series={todoSeries!}
+            />
+            <div className="flex flex-wrap gap-4 mt-3">
+              {(Object.entries(MACRO_META) as [string, typeof MACRO_META[keyof typeof MACRO_META]][]).map(([, meta]) => (
+                <span key={meta.label} className="flex items-center gap-1.5 text-[11px] text-f-text2">
+                  <i className="w-3 h-0.5 inline-block rounded" style={{ background: meta.color }} /> {meta.label}
+                </span>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <LineChart
+              height={180}
+              labels={chartLabels}
+              series={[
+                { data: historyData.map((d) => d[macro as Exclude<MacroFilter, "todo">]), color: singleMeta!.color },
+                { data: historyData.map(() => singleTarget), color: "#524F4A", dashed: true, name: "Target" },
+              ]}
+            />
+            <div className="flex gap-5 mt-3">
+              <span className="flex items-center gap-1.5 text-[11px] text-f-text2">
+                <i className="w-3 h-0.5 inline-block rounded" style={{ background: singleMeta!.color }} /> Consumido
+              </span>
+              <span className="flex items-center gap-1.5 text-[11px] text-f-text2">
+                <i className="w-3 h-0.5 bg-f-text3 inline-block rounded" /> Target
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
-      <div className="f-card mt-4 !p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-f-border f-datalabel">Detalle diario</div>
-        <div className="f-scroll-x">
-          <table className="f-table min-w-[520px]">
-            <thead><tr><th>Fecha</th><th>Kcal</th><th>P</th><th>C</th><th>G</th><th>Adher.</th></tr></thead>
-            <tbody>
-              {[...historyData].reverse().map((d) => (
-                <tr key={d.date}>
-                  <td>{d.date.slice(5)}</td>
-                  <td style={{ color: Math.abs(d.kcal - plan.kcal) > 250 ? "#C49A3C" : "#D4CFC4" }}>{d.kcal}</td>
-                  <td>{d.p}</td><td>{d.c}</td><td>{d.f}</td>
-                  <td style={{ color: d.adherence >= 90 ? "#5B8A64" : d.adherence >= 75 ? "#C49A3C" : "#A8404D" }}>{d.adherence}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!isTodo && historyData.length > 0 && (
+        <div className="f-card mt-4 !p-0 overflow-hidden">
+          <div className="px-5 py-3 border-b border-f-border f-datalabel">Detalle diario</div>
+          <div className="f-scroll-x">
+            <table className="f-table min-w-[520px]">
+              <thead><tr><th>Fecha</th><th>Kcal</th><th>P</th><th>C</th><th>G</th><th>Adher.</th></tr></thead>
+              <tbody>
+                {[...historyData].reverse().map((d) => (
+                  <tr key={d.date}>
+                    <td>{d.date.slice(5)}</td>
+                    <td style={{ color: Math.abs(d.kcal - plan.kcal) > 250 ? "#C49A3C" : "#D4CFC4" }}>{d.kcal}</td>
+                    <td>{d.p}</td><td>{d.c}</td><td>{d.f}</td>
+                    <td style={{ color: d.adherence >= 90 ? "#5B8A64" : d.adherence >= 75 ? "#C49A3C" : "#A8404D" }}>{d.adherence}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
-      {historyData.length === 0 && <EmptyState icon="bar_chart" title="Sin datos en este período" />}
+      )}
     </>
   );
 }

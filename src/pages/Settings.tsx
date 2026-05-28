@@ -133,73 +133,74 @@ function Reminders() {
   );
 }
 
-/* ---------------- 6.2 Personalidad del bot ---------------- */
+/* ---------------- 6.2 Personalidad del bot — PRÓXIMAMENTE ---------------- */
 function Personality() {
-  const { preferences, persist, busy, source } = useSavePrefs();
-  const [tone, setTone] = useState<"rocky" | "analytic" | "empathic">(preferences.bot_tone ?? "rocky");
-  useEffect(() => { setTone(preferences.bot_tone ?? "rocky"); }, [preferences]);
-  const samples: Record<typeof tone, string> = {
+  const samples: Record<string, string> = {
     rocky: "Hoy no se negocia. Bici Z2, 90'. Vamos.",
     analytic: "Sesión pendiente: Bici Z2 — Rodaje 90'. Horario: 12:00.",
     empathic: "¿Cómo te sentís hoy? Tenés bici Z2 a las 12, tranqui.",
   };
+  const [preview, setPreview] = useState<"rocky" | "analytic" | "empathic">("rocky");
   return (
     <>
-      <div className="f-card">
-        <span className="f-datalabel">Tono del bot</span>
-        <p className="text-[12px] text-f-text2 mt-1 mb-4">El cambio aplica al siguiente mensaje.</p>
-        <Segmented
-          value={tone}
-          onChange={(v) => { setTone(v); persist({ bot_tone: v }); }}
-          columns={3}
-          options={[
-            { value: "rocky", label: "Rocky", icon: "sports_mma" },
-            { value: "analytic", label: "Analítico", icon: "analytics" },
-            { value: "empathic", label: "Empático", icon: "favorite" },
-          ]}
-        />
-      </div>
-      <div className="f-card mt-4">
-        <span className="f-datalabel">Así te va a hablar</span>
-        <div className="mt-3 bg-f-card border border-f-border rounded-lg rounded-bl-sm p-4 max-w-[80%]">
-          <div className="font-mono text-[9.5px] uppercase tracking-wide text-f-green-light mb-1.5">Forja bot</div>
-          <p className="text-[14px] text-f-bone">{samples[tone]}</p>
+      <div className="f-card-soft mb-4 flex items-start gap-3">
+        <span className="material-symbols-outlined text-f-amber flex-none mt-0.5" style={{ fontSize: 18 }}>construction</span>
+        <div>
+          <div className="text-[13px] text-f-text font-medium">Próximamente</div>
+          <p className="text-[12px] text-f-text2 mt-0.5">La personalización del tono del bot está en desarrollo. Por ahora el bot usa un tono por defecto.</p>
         </div>
       </div>
-      {source !== "live" && <p className="text-[11px] text-f-text3 mt-3">El tono se guarda en el backend cuando hay conexión.</p>}
-      {busy && <p className="text-[11px] text-f-text3 mt-3">Guardando…</p>}
+      <div className="opacity-50 pointer-events-none select-none">
+        <div className="f-card">
+          <span className="f-datalabel">Tono del bot</span>
+          <p className="text-[12px] text-f-text2 mt-1 mb-4">El cambio aplicará al siguiente mensaje.</p>
+          <Segmented
+            value={preview}
+            onChange={(v) => setPreview(v)}
+            columns={3}
+            options={[
+              { value: "rocky", label: "Rocky", icon: "sports_mma" },
+              { value: "analytic", label: "Analítico", icon: "analytics" },
+              { value: "empathic", label: "Empático", icon: "favorite" },
+            ]}
+          />
+        </div>
+        <div className="f-card mt-4">
+          <span className="f-datalabel">Así te va a hablar</span>
+          <div className="mt-3 bg-f-card border border-f-border rounded-lg rounded-bl-sm p-4 max-w-[80%]">
+            <div className="font-mono text-[9.5px] uppercase tracking-wide text-f-green-light mb-1.5">Forja bot</div>
+            <p className="text-[14px] text-f-bone">{samples[preview]}</p>
+          </div>
+        </div>
+      </div>
     </>
   );
 }
 
-/* ---------------- 6.3 Privacidad ---------------- */
+/* ---------------- 6.3 Privacidad — PRÓXIMAMENTE ---------------- */
 function Privacy() {
-  const { preferences, persist, busy, source } = useSavePrefs();
-  const pv = preferences.privacy ?? { rank: true, community_avg: true, newsletter: false };
-  const [opts, setOpts] = useState(pv);
-  useEffect(() => { setOpts(preferences.privacy ?? { rank: true, community_avg: true, newsletter: false }); }, [preferences]);
-  const rows: { k: keyof typeof pv; label: string }[] = [
-    { k: "rank", label: "Aparecer en el ranking de Performance Score" },
-    { k: "community_avg", label: "Incluir mi score (anónimo) en promedios de la comunidad" },
-    { k: "newsletter", label: "Newsletter / comunicaciones de Forja" },
+  const rows = [
+    { label: "Aparecer en el ranking de Performance Score" },
+    { label: "Incluir mi score (anónimo) en promedios de la comunidad" },
+    { label: "Newsletter / comunicaciones de Forja" },
   ];
-  const toggle = (k: keyof typeof pv) => {
-    const next = { ...opts, [k]: !opts[k] };
-    setOpts(next);
-    persist({ privacy: next });
-  };
   return (
     <>
-      <div className="f-card !p-0 divide-y divide-f-border">
+      <div className="f-card-soft mb-4 flex items-start gap-3">
+        <span className="material-symbols-outlined text-f-amber flex-none mt-0.5" style={{ fontSize: 18 }}>construction</span>
+        <div>
+          <div className="text-[13px] text-f-text font-medium">Próximamente</div>
+          <p className="text-[12px] text-f-text2 mt-0.5">Los controles de privacidad y comunidad estarán disponibles cuando se lance el ranking social.</p>
+        </div>
+      </div>
+      <div className="opacity-50 pointer-events-none select-none f-card !p-0 divide-y divide-f-border">
         {rows.map((o) => (
-          <div key={o.k} className="px-5 flex items-center gap-4 py-4">
+          <div key={o.label} className="px-5 flex items-center gap-4 py-4">
             <span className="flex-1 text-[14px] text-f-text">{o.label}</span>
-            <Toggle on={opts[o.k]} label={o.label} onToggle={() => toggle(o.k)} />
+            <Toggle on={false} label={o.label} onToggle={() => {}} />
           </div>
         ))}
       </div>
-      {source !== "live" && <p className="text-[11px] text-f-text3 mt-3">Se guarda en el backend cuando hay conexión.</p>}
-      {busy && <p className="text-[11px] text-f-text3 mt-3">Guardando…</p>}
     </>
   );
 }

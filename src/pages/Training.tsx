@@ -2,7 +2,7 @@ import { useState } from "react";
 import { type SessionType } from "../data/mock";
 import { useProfileData } from "../api/store";
 import { waActions } from "../lib/whatsapp";
-import { SectionHeader, Tabs, Pill, Row, ConfirmDialog, Sheet, FileDrop } from "../components/ui";
+import { SectionHeader, Tabs, Pill, Row, ConfirmDialog, Sheet, FileDrop, EmptyState } from "../components/ui";
 import { BarChart } from "../components/charts";
 
 type Tab = "plan" | "historial" | "prs";
@@ -96,18 +96,59 @@ function WeeklyPlan() {
 }
 
 /* ---------------- 3.2 Historial de sesiones ---------------- */
-function SessionHistory() {
-  const { data } = useProfileData();
-  const [weeks, setWeeks] = useState<4 | 8 | 12>(8);
-  const adherence = Array.from({ length: weeks }).map((_, i) => ({
-    label: `S${14 - weeks + i + 1}`,
-    v: Math.max(60, Math.min(100, Math.round(88 + Math.sin(i * 1.2) * 14))),
+function computeAdherence(sessions: typeof import("../data/mock").sessionHistory, limit: number | "todo") {
+  if (!sessions.length) return [];
+  const sorted = [...sessions].sort((a, b) => a.date.localeCompare(b.date));
+  const weekMap = new Map<string, { done: number; total: number }>();
+  sorted.forEach((s) => {
+    const d = new Date(s.date);
+    const day = d.getDay();
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+    const key = monday.toISOString().slice(0, 10);
+    const wk = weekMap.get(key) ?? { done: 0, total: 0 };
+    wk.total++;
+    if (s.status === "done") wk.done++;
+    weekMap.set(key, wk);
+  });
+  const entries = Array.from(weekMap.entries()).sort(([a], [b]) => a.localeCompare(b));
+  const sliced = limit === "todo" ? entries : entries.slice(-limit);
+  return sliced.map(([, { done, total }], i) => ({
+    label: `S${i + 1}`,
+    v: total > 0 ? Math.round((done / total) * 100) : 0,
   }));
+}
+
+function SessionHistory() {
+  const { data, source } = useProfileData();
+  const [weeks, setWeeks] = useState<4 | 8 | 12 | "todo">(8);
+
   const STATUS: Record<string, { tone: "green" | "red" | "warn"; label: string }> = {
     done: { tone: "green", label: "Completada" },
     skipped: { tone: "red", label: "Saltada" },
     partial: { tone: "warn", label: "Parcial" },
   };
+
+  const hasData = data.sessionHistory.length > 0 || data.sessionStats.done > 0;
+
+  if (!hasData && source === "live") {
+    return (
+      <EmptyState
+        icon="fitness_center"
+        title="Sin sesiones registradas aún"
+        hint="Reportá tus entrenamientos al bot por WhatsApp y aparecerán acá."
+      />
+    );
+  }
+
+  // Demo mode: fake adherence; live mode: compute from real sessions
+  const nWeeks = weeks === "todo" ? 12 : weeks;
+  const adherence = source === "demo"
+    ? Array.from({ length: nWeeks }).map((_, i) => ({
+        label: `S${i + 1}`,
+        v: Math.max(60, Math.min(100, Math.round(88 + Math.sin(i * 1.2) * 14))),
+      }))
+    : computeAdherence(data.sessionHistory, weeks);
 
   return (
     <>
@@ -115,8 +156,8 @@ function SessionHistory() {
         {[
           { l: "Completitud", v: `${data.sessionStats.rate}%`, s: `${data.sessionStats.done}/${data.sessionStats.planned}` },
           { l: "Sesiones", v: data.sessionStats.done, s: "desde día 1" },
-          { l: "RPE promedio", v: data.sessionStats.avgRpe, s: "esfuerzo" },
-          { l: "Saltadas", v: data.sessionStats.planned - data.sessionStats.done, s: "total" },
+          { l: "RPE promedio", v: data.sessionStats.avgRpe || "—", s: "esfuerzo" },
+          { l: "Saltadas", v: Math.max(0, data.sessionStats.planned - data.sessionStats.done), s: "total" },
         ].map((x) => (
           <div key={x.l} className="f-card">
             <div className="font-sans font-bold text-[20px] sm:text-[22px] text-f-text">{x.v}</div>
@@ -126,40 +167,47 @@ function SessionHistory() {
         ))}
       </div>
 
-      <div className="f-card mb-4">
-        <div className="flex items-center justify-between mb-4">
-          <span className="f-datalabel">Adherencia semanal</span>
-          <div className="flex gap-2">
-            {([4, 8, 12] as const).map((w) => (
-              <button key={w} className="f-tab" aria-selected={weeks === w} onClick={() => setWeeks(w)}>{w} sem</button>
-            ))}
-          </div>
-        </div>
-        <BarChart data={adherence} height={150} />
-      </div>
-
-      <div className="f-card !p-0 divide-y divide-f-border">
-        {data.sessionHistory.map((s) => {
-          const st = STATUS[s.status] ?? STATUS.done;
-          return (
-            <div key={s.date} className="px-5">
-              <Row
-                icon={ICON[s.type]}
-                iconTone={st.tone}
-                title={<>{TYPE_LABEL[s.type]} <span className="font-mono text-[11px] text-f-text3">· {s.date}</span></>}
-                sub={s.note || (s.rpe ? `RPE ${s.rpe}` : "—")}
-                meta={
-                  <div className="flex items-center gap-2">
-                    {s.rpe != null && <span className="font-mono text-[11px] text-f-text2">RPE {s.rpe}</span>}
-                    <Pill tone={st.tone}>{st.label}</Pill>
-                  </div>
-                }
-                action={<button className="f-btn-ghost" title="Editar"><span className="material-symbols-outlined" style={{ fontSize: 17 }}>edit</span></button>}
-              />
+      {adherence.length > 0 && (
+        <div className="f-card mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <span className="f-datalabel">Adherencia semanal</span>
+            <div className="flex gap-2">
+              {([4, 8, 12] as const).map((w) => (
+                <button key={w} className="f-tab" aria-selected={weeks === w} onClick={() => setWeeks(w)}>{w}sem</button>
+              ))}
+              <button className="f-tab" aria-selected={weeks === "todo"} onClick={() => setWeeks("todo")}>Todo</button>
             </div>
-          );
-        })}
-      </div>
+          </div>
+          <BarChart data={adherence} height={150} />
+        </div>
+      )}
+
+      {data.sessionHistory.length > 0 ? (
+        <div className="f-card !p-0 divide-y divide-f-border">
+          {data.sessionHistory.map((s) => {
+            const st = STATUS[s.status] ?? STATUS.done;
+            return (
+              <div key={s.date} className="px-5">
+                <Row
+                  icon={ICON[s.type]}
+                  iconTone={st.tone}
+                  title={<>{TYPE_LABEL[s.type]} <span className="font-mono text-[11px] text-f-text3">· {s.date}</span></>}
+                  sub={s.note || (s.rpe ? `RPE ${s.rpe}` : "—")}
+                  meta={
+                    <div className="flex items-center gap-2">
+                      {s.rpe != null && <span className="font-mono text-[11px] text-f-text2">RPE {s.rpe}</span>}
+                      <Pill tone={st.tone}>{st.label}</Pill>
+                    </div>
+                  }
+                  action={<button className="f-btn-ghost" title="Editar"><span className="material-symbols-outlined" style={{ fontSize: 17 }}>edit</span></button>}
+                />
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <EmptyState icon="calendar_today" title="Sin registros individuales" hint="El bot muestra las últimas 12 sesiones detalladas." />
+      )}
       <p className="text-[12px] text-f-text3 mt-3">Podés corregir estado, RPE o agregar notas retroactivamente — el bot las usa de contexto.</p>
     </>
   );
@@ -179,6 +227,9 @@ function PRs() {
           <span className="material-symbols-outlined" style={{ fontSize: 18 }}>add</span> Agregar PR
         </button>
       </div>
+      {prs.length === 0 && (
+        <EmptyState icon="trophy" title="Sin records personales aún" hint="Cargá tu primer PR con el botón de arriba o reportalo al bot por WhatsApp." />
+      )}
       <div className="f-card !p-0 divide-y divide-f-border">
         {prs.map((pr) => (
           <div key={pr.id} className="px-5">

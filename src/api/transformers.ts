@@ -198,13 +198,11 @@ export function buildHome(id: DbProfileIdentity, o: DbOverview) {
     nutritionPct: o.monthly?.nutritionPct30d ?? null,
   };
 
-  const streaks = o.events.length
-    ? o.events.slice(0, 3).map((e) => ({
-        icon: e.event_type === "pr" ? "trophy" : e.event_type === "milestone" ? "bolt" : "local_fire_department",
-        text: e.description,
-        tone: e.event_type === "pr" ? "gold" : "green",
-      }))
-    : mock.streaks;
+  const streaks = o.events.slice(0, 3).map((e) => ({
+    icon: e.event_type === "pr" ? "trophy" : e.event_type === "milestone" ? "bolt" : "local_fire_department",
+    text: e.description,
+    tone: e.event_type === "pr" ? "gold" : "green",
+  }));
 
   return { athlete, race, today, week, weekSummary, monthly, streaks };
 }
@@ -238,17 +236,15 @@ export function buildNutrition(n: DbNutrition) {
       })
     : mock.restrictions;
 
-  const nutritionHistory = n.summaries.length
-    ? n.summaries.map((s) => ({
-        date: s.summary_date.slice(0, 10),
-        kcal: s.total_kcal,
-        target: nutritionPlan.kcal,
-        p: Math.round(s.total_protein_g),
-        c: Math.round(s.total_carbs_g),
-        f: Math.round(s.total_fat_g),
-        adherence: Math.round(s.kcal_adherence_pct ?? 0),
-      }))
-    : mock.nutritionHistory;
+  const nutritionHistory = n.summaries.map((s) => ({
+    date: s.summary_date.slice(0, 10),
+    kcal: s.total_kcal,
+    target: nutritionPlan.kcal,
+    p: Math.round(s.total_protein_g),
+    c: Math.round(s.total_carbs_g),
+    f: Math.round(s.total_fat_g),
+    adherence: Math.round(s.kcal_adherence_pct ?? 0),
+  }));
 
   return { nutritionPlan, restrictions, nutritionHistory };
 }
@@ -269,29 +265,25 @@ export function buildTraining(t: DbTraining) {
       })
     : mock.weeklyPlan;
 
-  const sessionHistory = t.logs.length
-    ? t.logs.slice(0, 12).map((l) => ({
-        date: l.logged_at.slice(0, 10),
-        type: st(l.session_name),
-        status: l.completed ? "done" : "skipped",
-        rpe: l.rpe,
-        note: l.notes ?? l.modifications ?? "",
-      }))
-    : mock.sessionHistory;
+  const sessionHistory = t.logs.slice(0, 12).map((l) => ({
+    date: l.logged_at.slice(0, 10),
+    type: st(l.session_name),
+    status: l.completed ? "done" : "skipped",
+    rpe: l.rpe,
+    note: l.notes ?? l.modifications ?? "",
+  }));
 
   const sessionStats = {
     done: t.stats.done,
     planned: t.stats.planned,
     rate: t.stats.rate,
-    avgRpe: t.stats.avgRpe ?? mock.sessionStats.avgRpe,
+    avgRpe: t.stats.avgRpe ?? 0,
   };
 
-  const personalRecords = t.prs.length
-    ? t.prs.map((p) => {
-        const ctx = (p.context ?? {}) as { mark?: string };
-        return { id: p.id, exercise: p.description, mark: ctx.mark ?? "—", date: p.occurred_at.slice(0, 10) };
-      })
-    : mock.personalRecords;
+  const personalRecords = t.prs.map((p) => {
+    const ctx = (p.context ?? {}) as { mark?: string };
+    return { id: p.id, exercise: p.description, mark: ctx.mark ?? "—", date: p.occurred_at.slice(0, 10) };
+  });
 
   return { weeklyPlan, sessionHistory, sessionStats, personalRecords };
 }
@@ -302,10 +294,10 @@ export function buildHealth(h: DbHealth) {
     ? {
         heightCm: b.height_cm,
         currentWeight: b.weight_kg,
-        bodyFat: b.body_fat_pct ?? mock.bodyData.bodyFat,
+        bodyFat: b.body_fat_pct ?? 0,
         weightHistory: [{ date: b.updated_at.slice(0, 10), kg: b.weight_kg }],
       }
-    : mock.bodyData;
+    : { heightCm: 0, currentWeight: 0, bodyFat: 0, weightHistory: [] as { date: string; kg: number }[] };
 
   const med = h.medical;
   const activeInjuries = med?.active_injuries?.length
@@ -319,18 +311,18 @@ export function buildHealth(h: DbHealth) {
         treatmentDesc: x.treatment ?? "—",
         painHistory: [{ date: x.start_date ?? "—", v: x.pain_level ?? x.pain ?? 0 }],
       }))
-    : mock.activeInjuries;
+    : [];
   const pastInjuries = med?.past_injuries?.length
     ? (med.past_injuries as any[]).map((x, i) => ({
         id: `p${i}`, area: x.description ?? x.location ?? "—",
         from: String(x.year ?? "—"), to: "—", days: 0,
       }))
-    : mock.pastInjuries;
-  const chronic = med?.chronic_conditions?.length ? med.chronic_conditions : mock.chronic;
-  const allergies = med?.allergies?.length ? med.allergies : mock.allergies;
+    : [];
+  const chronic = med?.chronic_conditions ?? [];
+  const allergies = med?.allergies ?? [];
   const medication = med?.medications?.length
     ? (med.medications as any[]).map((m) => ({ name: m.name ?? "—", dose: m.dose ?? "—", when: m.schedule ?? "—" }))
-    : mock.medication;
+    : [];
   const clinicalDocs = med
     ? [
         { id: "d1", type: "Electrocardiograma", url: med.ecg_file_url },
@@ -340,7 +332,7 @@ export function buildHealth(h: DbHealth) {
       ]
         .filter((d) => d.url)
         .map((d) => ({ id: d.id, type: d.type, date: "—", size: "—", isImage: false }))
-    : mock.clinicalDocs;
+    : [];
 
   return { bodyData, activeInjuries, pastInjuries, chronic, allergies, medication, clinicalDocs };
 }
@@ -349,28 +341,24 @@ export function buildJourney(j: DbJourney, race: typeof mock.race) {
   const KIND: Record<string, mock.TLKind> = {
     desliz: "slip", injury: "injury", illness: "injury", pr: "pr", milestone: "milestone",
   };
-  const timeline = j.events.length
-    ? j.events.map((e) => ({
-        date: e.occurred_at.slice(0, 10),
-        kind: KIND[e.event_type] ?? "milestone",
-        title: e.description,
-        detail: e.resolved_at ? `Resuelto ${e.resolved_at.slice(0, 10)}` : "",
-      }))
-    : mock.timeline;
+  const timeline = j.events.map((e) => ({
+    date: e.occurred_at.slice(0, 10),
+    kind: KIND[e.event_type] ?? "milestone",
+    title: e.description,
+    detail: e.resolved_at ? `Resuelto ${e.resolved_at.slice(0, 10)}` : "",
+  }));
 
-  const journeyCards = j.cards.length
-    ? j.cards.map((c) => ({
-        id: c.id,
-        kind: c.card_type === "weekly" ? "Semanal" : c.card_type === "eve" ? "Víspera" : "Post-race",
-        week: c.week_number,
-        title: c.narrative_text ?? `Semana ${c.week_number}`,
-        date: c.created_at.slice(0, 10),
-      }))
-    : mock.journeyCards;
+  const journeyCards = j.cards.map((c) => ({
+    id: c.id,
+    kind: c.card_type === "weekly" ? "Semanal" : c.card_type === "eve" ? "Víspera" : "Post-race",
+    week: c.week_number,
+    title: c.narrative_text ?? `Semana ${c.week_number}`,
+    date: c.created_at.slice(0, 10),
+  }));
 
-  const scoreSeries = j.scoreSeries.length ? j.scoreSeries : mock.scoreSeries;
+  const scoreSeries = j.scoreSeries;
   const avg = (a: number[]) => (a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : 0);
-  const scoreStats = j.scoreSeries.length
+  const scoreStats = scoreSeries.length
     ? {
         current: scoreSeries.at(-1) ?? 0,
         avg7: avg(scoreSeries.slice(-7)),
@@ -378,18 +366,20 @@ export function buildJourney(j: DbJourney, race: typeof mock.race) {
         avg90: avg(scoreSeries),
         percentile: mock.scoreStats.percentile,
       }
-    : mock.scoreStats;
+    : { current: 0, avg7: 0, avg30: 0, avg90: 0, percentile: 0 };
 
   const prs = j.events.filter((e) => e.event_type === "pr").length;
   const journeyTotals = j.events.length
     ? {
-        ...mock.journeyTotals,
+        sessions: 0,
+        mealsLogged: 0,
+        maxStreak: 0,
         prs,
         injuriesBeat: j.events.filter((e) => e.event_type === "injury" && e.resolved_at).length,
         slipsRecovered: j.events.filter((e) => e.event_type === "desliz").length,
         weeksOver90: scoreSeries.filter((s) => s >= 90).length,
       }
-    : mock.journeyTotals;
+    : { sessions: 0, mealsLogged: 0, maxStreak: 0, prs: 0, injuriesBeat: 0, slipsRecovered: 0, weeksOver90: 0 };
 
   return { timeline, journeyCards, scoreSeries, scoreStats, journeyTotals, race };
 }

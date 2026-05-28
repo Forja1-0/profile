@@ -1,13 +1,36 @@
-/** Charts SVG hechos a mano — sin librerías, colores del design system Forja. */
+/** Charts powered by Recharts — minimal dark-theme matching Forja design system. */
+import {
+  ResponsiveContainer,
+  LineChart as RLineChart,
+  BarChart as RBarChart,
+  AreaChart as RAreaChart,
+  Line, Bar, Area,
+  XAxis, YAxis,
+  CartesianGrid, Tooltip,
+  Cell,
+} from "recharts";
 
 export function scoreColor(v: number): string {
-  if (v >= 90) return "#C9A24B"; // dorado
-  if (v >= 75) return "#5B8A64"; // verde
-  if (v >= 50) return "#C49A3C"; // ámbar
-  return "#A8404D"; // rojo
+  if (v >= 90) return "#C9A24B";
+  if (v >= 75) return "#5B8A64";
+  if (v >= 50) return "#C49A3C";
+  return "#A8404D";
 }
 
-/* Performance Score ring */
+const TOOLTIP_STYLE: React.CSSProperties = {
+  background: "#1A1A1E",
+  border: "1px solid rgba(255,255,255,0.08)",
+  borderRadius: 8,
+  fontSize: 10,
+  fontFamily: "Space Mono, monospace",
+  color: "#D4CFC4",
+  padding: "4px 10px",
+  boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+};
+const AXIS_TICK = { fontSize: 9, fill: "#6B6762", fontFamily: "Space Mono, monospace" };
+const GRID_STROKE = "rgba(255,255,255,0.045)";
+
+/* Performance Score ring — SVG (no recharts equivalent) */
 export function ScoreRing({ value, size = 168, stroke = 12, label }: { value: number; size?: number; stroke?: number; label?: string }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -31,12 +54,12 @@ export function ScoreRing({ value, size = 168, stroke = 12, label }: { value: nu
   );
 }
 
-/* Macro progress bar */
+/* Macro progress bar — keep custom */
 export function MacroBar({
   label, value, target, unit, alert,
 }: { label: string; value: number; target: number; unit: string; alert?: boolean }) {
   const pct = Math.min(100, Math.round((value / target) * 100));
-  const col = alert ? "#C49A3C" : pct >= 95 ? "#5B8A64" : "#5B8A64";
+  const col = alert ? "#C49A3C" : "#5B8A64";
   return (
     <div>
       <div className="flex items-baseline justify-between mb-1.5">
@@ -54,7 +77,7 @@ export function MacroBar({
   );
 }
 
-/* Línea de barra simple etiquetada */
+/* Línea de barra simple etiquetada — keep custom */
 export function LabeledBar({ label, pct, color = "#5B8A64", right }: { label: string; pct: number; color?: string; right?: string }) {
   return (
     <div>
@@ -69,104 +92,121 @@ export function LabeledBar({ label, pct, color = "#5B8A64", right }: { label: st
   );
 }
 
-/* Line chart (una o dos series) */
+/* Line chart — Recharts */
 export function LineChart({
   series, height = 160, labels,
 }: {
-  series: { data: number[]; color: string; dashed?: boolean }[];
+  series: { data: number[]; color: string; dashed?: boolean; name?: string }[];
   height?: number;
   labels?: string[];
 }) {
-  const w = 600;
-  const pad = 8;
-  const all = series.flatMap((s) => s.data);
-  const min = Math.min(...all);
-  const max = Math.max(...all);
-  const span = max - min || 1;
-  const n = series[0].data.length;
-  const x = (i: number) => pad + (i * (w - pad * 2)) / (n - 1);
-  const y = (v: number) => pad + (1 - (v - min) / span) * (height - pad * 2);
+  const n = series[0]?.data.length ?? 0;
+  if (n === 0) return null;
+
+  const data = Array.from({ length: n }, (_, i) => {
+    const pt: Record<string, number> = { i };
+    series.forEach((s, si) => { pt[`v${si}`] = s.data[i]; });
+    return pt;
+  });
+
+  // Map index positions to label strings (first, middle, last)
+  const labelMap = new Map<number, string>();
+  if (labels?.length) {
+    if (labels[0]) labelMap.set(0, labels[0]);
+    if (labels[1] && n > 2) labelMap.set(Math.floor((n - 1) / 2), labels[1]);
+    if (labels[labels.length - 1] && n > 1) labelMap.set(n - 1, labels[labels.length - 1]);
+  }
 
   return (
-    <div>
-      <svg viewBox={`0 0 ${w} ${height}`} className="w-full" preserveAspectRatio="none" style={{ height }}>
-        {[0.25, 0.5, 0.75].map((g) => (
-          <line key={g} x1={0} x2={w} y1={pad + g * (height - pad * 2)} y2={pad + g * (height - pad * 2)} stroke="rgba(255,255,255,0.045)" />
-        ))}
+    <ResponsiveContainer width="100%" height={height}>
+      <RLineChart data={data} margin={{ top: 6, right: 4, bottom: labels ? 4 : 4, left: -24 }}>
+        <CartesianGrid stroke={GRID_STROKE} vertical={false} />
+        <XAxis
+          dataKey="i"
+          type="number"
+          domain={[0, n - 1]}
+          ticks={labelMap.size ? [...labelMap.keys()] : []}
+          tickFormatter={(i: number) => labelMap.get(i) ?? ""}
+          tick={AXIS_TICK}
+          tickLine={false}
+          axisLine={false}
+          interval={0}
+        />
+        <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={30} />
+        <Tooltip
+          contentStyle={TOOLTIP_STYLE}
+          labelFormatter={(i) => labelMap.get(Number(i)) ?? `${i}`}
+          cursor={{ stroke: "rgba(255,255,255,0.06)", strokeWidth: 1 }}
+        />
         {series.map((s, si) => (
-          <polyline
+          <Line
             key={si}
-            fill="none"
+            dataKey={`v${si}`}
+            name={s.name ?? `Serie ${si + 1}`}
             stroke={s.color}
             strokeWidth={2}
             strokeDasharray={s.dashed ? "5 5" : undefined}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            points={s.data.map((v, i) => `${x(i)},${y(v)}`).join(" ")}
+            dot={si === 0 ? { r: 2.5, fill: s.color, strokeWidth: 0 } : false}
+            activeDot={{ r: 4, fill: s.color, strokeWidth: 0 }}
           />
         ))}
-        {series[0].data.map((v, i) => (
-          <circle key={i} cx={x(i)} cy={y(v)} r={2.4} fill={series[0].color} />
-        ))}
-      </svg>
-      {labels && (
-        <div className="flex justify-between mt-2 font-mono text-[9px] text-f-text3">
-          {labels.map((l, i) => <span key={i}>{l}</span>)}
-        </div>
-      )}
-    </div>
+      </RLineChart>
+    </ResponsiveContainer>
   );
 }
 
-/* Bar chart (adherencia semanal, etc.) */
-export function BarChart({ data, height = 140, target }: { data: { label: string; v: number }[]; height?: number; target?: number }) {
-  const max = Math.max(...data.map((d) => d.v), target ?? 0) || 1;
+/* Bar chart — Recharts */
+export function BarChart({ data, height = 140 }: { data: { label: string; v: number }[]; height?: number; target?: number }) {
+  if (data.length === 0) return null;
   return (
-    <div>
-      <div className="flex items-end gap-2" style={{ height }}>
-        {data.map((d, i) => {
-          const h = (d.v / max) * (height - 22);
-          const col = d.v >= 90 ? "#5B8A64" : d.v >= 70 ? "#C49A3C" : "#A8404D";
-          return (
-            <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1.5">
-              <span className="font-mono text-[9px] text-f-text2">{d.v}</span>
-              <div className="w-full rounded-t" style={{ height: Math.max(4, h), background: col }} />
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex gap-2 mt-2">
-        {data.map((d, i) => <span key={i} className="flex-1 text-center font-mono text-[9px] text-f-text3">{d.label}</span>)}
-      </div>
-    </div>
+    <ResponsiveContainer width="100%" height={height}>
+      <RBarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -28 }} barCategoryGap="30%">
+        <CartesianGrid stroke={GRID_STROKE} vertical={false} />
+        <XAxis dataKey="label" tick={AXIS_TICK} tickLine={false} axisLine={false} />
+        <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} domain={[0, 100]} />
+        <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+        <Bar dataKey="v" name="Adherencia" radius={[3, 3, 0, 0]}>
+          {data.map((d, i) => (
+            <Cell key={i} fill={d.v >= 90 ? "#5B8A64" : d.v >= 70 ? "#C49A3C" : "#A8404D"} />
+          ))}
+        </Bar>
+      </RBarChart>
+    </ResponsiveContainer>
   );
 }
 
-/* Weight evolution sparkline-ish */
+/* Area chart — Recharts */
 export function AreaChart({ data, color = "#5B8A64", height = 130 }: { data: number[]; color?: string; height?: number }) {
-  const w = 600, pad = 6;
-  const min = Math.min(...data), max = Math.max(...data);
-  const span = max - min || 1;
-  const x = (i: number) => pad + (i * (w - pad * 2)) / (data.length - 1);
-  const y = (v: number) => pad + (1 - (v - min) / span) * (height - pad * 2);
-  const line = data.map((v, i) => `${x(i)},${y(v)}`).join(" ");
-  const area = `${pad},${height} ${line} ${w - pad},${height}`;
+  if (data.length < 2) return null;
+  const chartData = data.map((v, i) => ({ i, v }));
+  const gradId = `ag${color.replace(/[^a-z0-9]/gi, "")}`;
   return (
-    <svg viewBox={`0 0 ${w} ${height}`} className="w-full" preserveAspectRatio="none" style={{ height }}>
-      <defs>
-        <linearGradient id="ac" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.28" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={area} fill="url(#ac)" />
-      <polyline points={line} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-      {data.map((v, i) => <circle key={i} cx={x(i)} cy={y(v)} r={2.4} fill={color} />)}
-    </svg>
+    <ResponsiveContainer width="100%" height={height}>
+      <RAreaChart data={chartData} margin={{ top: 6, right: 4, bottom: 0, left: -28 }}>
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.28} />
+            <stop offset="100%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid stroke={GRID_STROKE} vertical={false} />
+        <XAxis dataKey="i" hide />
+        <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={30} />
+        <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ stroke: "rgba(255,255,255,0.06)" }} />
+        <Area
+          dataKey="v"
+          stroke={color}
+          strokeWidth={2}
+          fill={`url(#${gradId})`}
+          dot={{ r: 2.5, fill: color, strokeWidth: 0 }}
+          activeDot={{ r: 4, fill: color, strokeWidth: 0 }}
+        />
+      </RAreaChart>
+    </ResponsiveContainer>
   );
 }
 
-/* Mini grilla de la semana (7 días con estado) */
+/* Mini grilla de la semana — keep custom SVG */
 const STATE_META: Record<string, { icon: string; color: string; bg: string }> = {
   done: { icon: "check", color: "#abd0af", bg: "rgba(58,90,64,0.22)" },
   skipped: { icon: "close", color: "#A8404D", bg: "rgba(122,40,50,0.18)" },
