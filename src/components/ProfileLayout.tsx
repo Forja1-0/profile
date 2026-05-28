@@ -207,7 +207,9 @@ function StatusBanner() {
     <div className="mb-4 flex items-center gap-2.5 rounded-lg px-4 py-2.5 text-[12px]"
          style={{ background: "rgba(196,154,60,0.10)", border: "1px solid rgba(196,154,60,0.25)", color: "#C49A3C" }}>
       <span className="material-symbols-outlined" style={{ fontSize: 15 }}>science</span>
-      {error ?? "Modo demo · seteá VITE_API_URL y VITE_USER_ID para datos en vivo"}
+      {error
+        ? "Estamos en modo demo: los numeros que ves son de ejemplo. Entrá desde WhatsApp para ver tus datos."
+        : "Modo demo · entrá desde WhatsApp escribiendo \"perfil\" para ver tus datos."}
     </div>
   );
 }

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, currentUserId, type UserReminder } from "../api/client";
+import { waActions } from "../lib/whatsapp";
 import { Callout, Pill, SectionHeader, Toggle, toast } from "../components/ui";
 
 /**
@@ -9,22 +10,64 @@ import { Callout, Pill, SectionHeader, Toggle, toast } from "../components/ui";
  * quiere que el bot le ladre a las 6am — quiere armarse SUS recordatorios.
  *
  * Cada recordatorio es un cron real evaluado por el backend cada minuto
- * (cron/reminders.cron.ts). El usuario escribe label + mensaje + cron_expr;
- * el backend valida con node-cron antes de persistir.
- *
- * Helpers visuales para el cron_expr (ej "todos los días 14:30") quedan
- * para una siguiente iteracion — por ahora exponemos el cron crudo con
- * ejemplos visibles para que el usuario power-user lo arme a mano.
+ * (cron/reminders.cron.ts). El usuario power-user puede tocar el cron
+ * crudo, pero por default armamos el cron a partir de un input de horario
+ * + presets de dias — para que NUNCA tenga que entender la sintaxis.
  */
+
+type DaysPreset = "daily" | "weekdays" | "weekends" | "custom";
+const DAY_LABEL: Record<DaysPreset, string> = {
+  daily: "Todos los dias",
+  weekdays: "Lunes a viernes",
+  weekends: "Sabado y domingo",
+  custom: "Dias especificos",
+};
+
+// minimo viable: la UI maneja "hora del dia + dias de la semana" -> cron.
+// El cron real va a ser "<minuto> <hora> * * <dow-csv>".
+function buildCron(time: string, days: DaysPreset, customDow: number[]): string {
+  const [h, m] = time.split(":");
+  const hour = Number(h ?? 0);
+  const minute = Number(m ?? 0);
+  const dowMap: Record<Exclude<DaysPreset, "custom">, string> = {
+    daily: "*",
+    weekdays: "1-5",
+    weekends: "0,6",
+  };
+  const dow =
+    days === "custom"
+      ? customDow.length
+        ? customDow.sort().join(",")
+        : "*"
+      : dowMap[days];
+  return `${minute} ${hour} * * ${dow}`;
+}
+
+const DOW_LABEL = ["D", "L", "M", "M", "J", "V", "S"];
+
 export function Reminders() {
   const userId = currentUserId();
   const [items, setItems] = useState<UserReminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ label: "", message: "", cron_expr: "0 13 * * *" });
+  const [form, setForm] = useState({
+    label: "",
+    message: "",
+    time: "13:00",
+    days: "daily" as DaysPreset,
+    customDow: [] as number[],
+  });
+
+  const cronExpr = useMemo(
+    () => buildCron(form.time, form.days, form.customDow),
+    [form.time, form.days, form.customDow],
+  );
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
     let alive = true;
     setLoading(true);
     api
@@ -43,30 +86,51 @@ export function Reminders() {
     };
   }, [userId]);
 
-  const canSubmit = form.label.trim() && form.message.trim() && form.cron_expr.trim();
+  if (!userId) {
+    return (
+      <>
+        <SectionHeader
+          eyebrow="Recordatorios"
+          title={<>Para crear recordatorios <span className="font-serif italic">entrá desde WhatsApp</span>.</>}
+          lede="Necesitamos saber quien sos para mandarte los recordatorios al WhatsApp correcto."
+        />
+        <div className="f-card">
+          <p className="text-[14px] text-f-text mb-3">
+            Abrí Forja en WhatsApp y escribí <b>perfil</b>. Te llega un link unico
+            que abre esta pagina con tu cuenta.
+          </p>
+          <a href={waActions.open} target="_blank" rel="noreferrer" className="f-btn f-btn-wa">
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chat</span>
+            Abrir Forja en WhatsApp
+          </a>
+        </div>
+      </>
+    );
+  }
+
+  const canSubmit = form.label.trim() && form.message.trim() && cronExpr.trim();
 
   const submit = async () => {
-    if (!canSubmit || !userId) return;
+    if (!canSubmit) return;
     setCreating(true);
     try {
       const r = await api.createReminder(userId, {
         label: form.label.trim(),
         message: form.message.trim(),
-        cron_expr: form.cron_expr.trim(),
+        cron_expr: cronExpr,
       });
       setItems((p) => [r.reminder, ...p]);
-      setForm({ label: "", message: "", cron_expr: "0 13 * * *" });
+      setForm({ label: "", message: "", time: "13:00", days: "daily", customDow: [] });
       toast("Recordatorio creado");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "no pude crear";
-      toast(msg.includes("cron") ? "Cron inválido" : "Error al crear", "error");
+      toast(msg.includes("cron") ? "Horario invalido" : "Error al crear", "error");
     } finally {
       setCreating(false);
     }
   };
 
   const toggleActive = async (r: UserReminder) => {
-    if (!userId) return;
     try {
       const upd = await api.updateReminder(userId, r.id, { active: !r.active });
       setItems((p) => p.map((x) => (x.id === r.id ? upd.reminder : x)));
@@ -76,8 +140,7 @@ export function Reminders() {
   };
 
   const remove = async (r: UserReminder) => {
-    if (!userId) return;
-    if (!confirm(`¿Eliminar "${r.label}"?`)) return;
+    if (!confirm(`Eliminar "${r.label}"?`)) return;
     try {
       await api.deleteReminder(userId, r.id);
       setItems((p) => p.filter((x) => x.id !== r.id));
@@ -86,6 +149,12 @@ export function Reminders() {
       toast("No pude borrar", "error");
     }
   };
+
+  const toggleDow = (n: number) =>
+    setForm((f) => ({
+      ...f,
+      customDow: f.customDow.includes(n) ? f.customDow.filter((x) => x !== n) : [...f.customDow, n],
+    }));
 
   return (
     <>
@@ -99,7 +168,7 @@ export function Reminders() {
         <div className="f-datalabel mb-3">Nuevo recordatorio</div>
         <div className="flex flex-col gap-3">
           <div>
-            <label className="f-label">Título</label>
+            <label className="f-label">Titulo</label>
             <input
               className="f-input"
               placeholder="Tomar creatina"
@@ -116,21 +185,65 @@ export function Reminders() {
               onChange={(e) => setForm({ ...form, message: e.target.value })}
             />
           </div>
-          <div>
-            <label className="f-label">Cron (cuándo)</label>
-            <input
-              className="f-input font-mono"
-              placeholder="0 13 * * *"
-              value={form.cron_expr}
-              onChange={(e) => setForm({ ...form, cron_expr: e.target.value })}
-            />
-            <p className="f-helper">
-              Formato de 5 campos: <span className="font-mono">minuto hora dom mes dow</span>.
-              Ejemplos: <span className="font-mono">0 13 * * *</span> (todos los días 13:00),{" "}
-              <span className="font-mono">0 7 * * 1-5</span> (L a V 7:00),{" "}
-              <span className="font-mono">30 19 * * 1,3,5</span> (L/M/V 19:30).
-            </p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="f-label">Hora</label>
+              <input
+                type="time"
+                className="f-input font-mono"
+                value={form.time}
+                onChange={(e) => setForm({ ...form, time: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="f-label">Dias</label>
+              <select
+                className="f-input"
+                value={form.days}
+                onChange={(e) => setForm({ ...form, days: e.target.value as DaysPreset })}
+              >
+                {(Object.keys(DAY_LABEL) as DaysPreset[]).map((k) => (
+                  <option key={k} value={k}>
+                    {DAY_LABEL[k]}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+
+          {form.days === "custom" && (
+            <div>
+              <label className="f-label">Elegí los dias</label>
+              <div className="flex gap-1.5">
+                {DOW_LABEL.map((lbl, idx) => {
+                  const on = form.customDow.includes(idx);
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => toggleDow(idx)}
+                      className={`flex-1 h-10 rounded-lg border text-[13px] font-medium transition ${
+                        on
+                          ? "border-f-green-light bg-f-green-dark text-f-text"
+                          : "border-f-border text-f-text2 hover:bg-f-surface"
+                      }`}
+                    >
+                      {lbl}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <p className="f-helper">
+            Se va a disparar:{" "}
+            <span className="text-f-text">
+              {DAY_LABEL[form.days].toLowerCase()} a las {form.time}
+            </span>
+            .
+          </p>
+
           <button
             className="f-btn f-btn-primary"
             onClick={submit}
@@ -149,7 +262,7 @@ export function Reminders() {
         {loading && <p className="text-[13px] text-f-text3">Cargando…</p>}
         {!loading && items.length === 0 && (
           <p className="text-[13px] text-f-text3">
-            Todavía no tenés ninguno. Creá uno arriba.
+            Todavia no tenés ninguno. Creá uno arriba.
           </p>
         )}
         <div className="flex flex-col gap-2">
@@ -180,8 +293,8 @@ export function Reminders() {
 
       <div className="mt-3 sm:mt-4">
         <Callout icon="schedule">
-          El cron del backend chequea cada minuto y dispara los que matcheen. Si no
-          llega cuando esperabas, revisá la zona horaria (Argentina/Buenos_Aires).
+          Los horarios estan en la zona Argentina/Buenos_Aires. Si no te llega
+          cuando esperabas, revisa que el WhatsApp del bot tenga tu numero.
         </Callout>
       </div>
     </>

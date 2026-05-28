@@ -2,27 +2,34 @@ import { useEffect, useState } from "react";
 import { useProfileData } from "../api/store";
 import { waActions } from "../lib/whatsapp";
 import type { DbPreferences } from "../api/client";
+import { isAmateur, isElite } from "../lib/mode";
 import { SectionHeader, Tabs, Toggle, Segmented, Row, ConfirmDialog, Callout, Pill, toast } from "../components/ui";
 
 type Tab = "recordatorios" | "personalidad" | "privacidad" | "datos" | "conexiones";
 
 export function Settings() {
-  const [tab, setTab] = useState<Tab>("recordatorios");
+  // En modo amateur los recordatorios viven en /perfil/recordatorios (con
+  // su CRUD real apuntando a user_reminders). Mostrar la tab vieja con
+  // mock duplicaria la UI y confundiria al usuario.
+  const tabs = [
+    ...(isElite()
+      ? [{ value: "recordatorios" as const, label: "Recordatorios" }]
+      : []),
+    { value: "personalidad" as const, label: "Personalidad" },
+    { value: "privacidad" as const, label: "Privacidad" },
+    { value: "datos" as const, label: "Datos personales" },
+    { value: "conexiones" as const, label: "Conexiones" },
+  ];
+  const [tab, setTab] = useState<Tab>(isElite() ? "recordatorios" : "personalidad");
   return (
     <>
       <SectionHeader eyebrow="Configuración" title="El centro de control del bot" lede="Todo lo que ajustás acá cambia cómo y cuándo el bot te habla por WhatsApp." />
       <Tabs<Tab>
         value={tab}
         onChange={setTab}
-        tabs={[
-          { value: "recordatorios", label: "Recordatorios" },
-          { value: "personalidad", label: "Personalidad" },
-          { value: "privacidad", label: "Privacidad" },
-          { value: "datos", label: "Datos personales" },
-          { value: "conexiones", label: "Conexiones" },
-        ]}
+        tabs={tabs}
       />
-      {tab === "recordatorios" && <Reminders />}
+      {tab === "recordatorios" && isElite() && <Reminders />}
       {tab === "personalidad" && <Personality />}
       {tab === "privacidad" && <Privacy />}
       {tab === "datos" && <PersonalData />}
@@ -340,18 +347,27 @@ function Connections() {
           }
         />
       </div>
-      <div className="f-card mt-4">
-        <div className="flex items-center justify-between mb-3">
-          <span className="f-datalabel">Wearables</span>
-          <Pill tone="gold">Ferrari</Pill>
+      {isElite() && (
+        <>
+          <div className="f-card mt-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="f-datalabel">Wearables</span>
+              <Pill tone="gold">Ferrari</Pill>
+            </div>
+            <div className="divide-y divide-f-border">
+              {["Garmin Connect", "WHOOP", "Strava"].map((w) => (
+                <Row key={w} icon="watch" title={w} sub="No conectado" action={<button className="f-btn f-btn-secondary f-btn-sm" disabled>Conectar</button>} />
+              ))}
+            </div>
+          </div>
+          <div className="mt-4"><Callout icon="lock">La integración de wearables se desbloquea con el plan Ferrari.</Callout></div>
+        </>
+      )}
+      {isAmateur() && (
+        <div className="mt-4">
+          <Callout>Tu cuenta de WhatsApp es todo lo que necesitás. Forja te habla por ahí; no hace falta ningún wearable.</Callout>
         </div>
-        <div className="divide-y divide-f-border">
-          {["Garmin Connect", "WHOOP", "Strava"].map((w) => (
-            <Row key={w} icon="watch" title={w} sub="No conectado" action={<button className="f-btn f-btn-secondary f-btn-sm" disabled>Conectar</button>} />
-          ))}
-        </div>
-      </div>
-      <div className="mt-4"><Callout icon="lock">La integración de wearables se desbloquea con el plan Ferrari.</Callout></div>
+      )}
     </>
   );
 }

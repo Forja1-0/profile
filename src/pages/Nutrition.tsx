@@ -4,6 +4,7 @@ import { useProfileData } from "../api/store";
 import { api } from "../api/client";
 import { restrictionsToFlags } from "../api/transformers";
 import { waActions } from "../lib/whatsapp";
+import { isAmateur } from "../lib/mode";
 import {
   SectionHeader, Tabs, Pill, Row, ConfirmDialog, Sheet, Checkbox, Callout, EmptyState, toast,
 } from "../components/ui";
@@ -56,7 +57,9 @@ function FrequentMeals() {
   const [busy, setBusy] = useState(false);
 
   const count = meals.length;
-  const goal = 10;
+  // Amateur llega y abandona si le pedimos 10 comidas frecuentes; con 5 ya
+  // tiene cubierto desayuno/almuerzo/cena + 2 snacks.
+  const goal = isAmateur() ? 5 : 10;
 
   const run = async (fn: () => Promise<void>, ok: string) => {
     setBusy(true);

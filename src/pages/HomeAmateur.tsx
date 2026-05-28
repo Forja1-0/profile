@@ -4,46 +4,52 @@ import { Callout, Pill, SectionHeader } from "../components/ui";
 
 /**
  * Home del modo amateur: contesta la unica pregunta que le importa al
- * gym-goer casual — "¿cómo voy?" — con minima estetica de score y cero
+ * gym-goer casual — "como voy?" — con minima estetica de score y cero
  * percentiles. Tres bloques temporales (hoy / semana / mes) cruzados con
  * dos dimensiones (entrenamiento / nutricion).
  *
- * El bloque superior muestra la meta personal cuando existe. Mientras el
- * fetch real del goal no esta wireado, leemos del athlete + race como
- * proxies. Cuando el backend exponga /api/profile/:u/goal, sustituir.
+ * Todos los numeros que ve el usuario vienen del backend (overview):
+ *   - hoy: v_daily_remaining (kcal consumidas vs target)
+ *   - semana: monthly.nutritionPct7d + weekSummary.sessionsDone/Planned
+ *   - mes:   monthly.sessionsDone30d + monthly.nutritionPct30d
+ *
+ * Meta personal: viene de goals.goal_kind/metric (transformers.formatPersonalGoal).
  */
 export function HomeAmateur() {
-  const { data } = useProfileData();
-  const { athlete, today, week, weekSummary } = data;
+  const { data, source } = useProfileData();
+  const { athlete, today, week, weekSummary, monthly } = data;
 
   const todayProtein = today.macros.protein.value;
   const todayProteinTarget = today.macros.protein.target;
   const todayKcal = today.macros.kcal.value;
   const todayKcalTarget = today.macros.kcal.target;
 
-  // Approximacion semanal/mensual usando lo disponible en el mock.
   const weekSessions = weekSummary.sessionsDone;
   const weekSessionsTotal = weekSummary.sessionsPlanned;
   const weekNutritionPct = weekSummary.nutritionPct;
-  const monthSessions = 12;     // placeholder — real vendra del backend
-  const monthNutritionPct = 84; // idem
+  const monthSessions = monthly.sessionsDone;
+  const monthNutritionPct = monthly.nutritionPct;
 
-  // Meta personal placeholder. Cuando se conecte el goal real del backend,
-  // reemplazar este bloque con el shape de ActiveGoal.
   const goalText =
     athlete.personalGoal ??
-    "Ponete una meta personal desde WhatsApp diciendo \"meta: ...\"";
+    'Ponete una meta personal desde WhatsApp diciendo "meta: ..."';
+
+  const hasGoal = !!athlete.personalGoal;
+
+  const safeKcalPct = todayKcalTarget > 0 ? Math.round((todayKcal / todayKcalTarget) * 100) : 0;
+  const sessionsLabel =
+    weekSessionsTotal > 0 ? `${weekSessions} de ${weekSessionsTotal} sesiones` : `${weekSessions} sesiones`;
 
   return (
     <>
       <SectionHeader
-        eyebrow="Cómo voy"
+        eyebrow="Como voy"
         title={
           <>
             Hola, <span className="font-serif italic">{athlete.firstName}</span>.
           </>
         }
-        lede="Tu progreso, sin ruido. Hoy, esta semana, este mes — entrenamiento y nutrición."
+        lede="Tu progreso, sin ruido. Hoy, esta semana, este mes — entrenamiento y nutricion."
       />
 
       {/* Meta personal */}
@@ -55,7 +61,7 @@ export function HomeAmateur() {
               {goalText}
             </div>
           </div>
-          <Pill tone="green">En camino</Pill>
+          {hasGoal && <Pill tone="green">En camino</Pill>}
         </div>
       </div>
 
@@ -63,35 +69,48 @@ export function HomeAmateur() {
       <div className="grid sm:grid-cols-3 gap-3 sm:gap-4">
         <ProgressBlock
           title="Hoy"
-          training={today.session.status === "done" ? "1 sesión hecha" : "Pendiente"}
-          nutritionMain={`${todayKcal} / ${todayKcalTarget} kcal`}
-          nutritionSecondary={`${todayProtein}g proteína / ${todayProteinTarget}g`}
-          nutritionPct={Math.round((todayKcal / todayKcalTarget) * 100)}
+          training={today.session.status === "done" ? "1 sesion hecha" : "Pendiente"}
+          nutritionMain={
+            todayKcalTarget > 0
+              ? `${todayKcal} / ${todayKcalTarget} kcal`
+              : "Sin plan cargado"
+          }
+          nutritionSecondary={
+            todayProteinTarget > 0
+              ? `${todayProtein}g proteina / ${todayProteinTarget}g`
+              : "Cargá tu plan en Nutricion"
+          }
+          nutritionPct={safeKcalPct}
         />
         <ProgressBlock
           title="Esta semana"
-          training={`${weekSessions} de ${weekSessionsTotal} sesiones`}
-          nutritionMain={`${weekNutritionPct}% adherencia`}
-          nutritionSecondary={
-            week
-              .filter((d) => d.state === "done")
-              .map((d) => d.day)
-              .join(" · ") || "—"
+          training={sessionsLabel}
+          nutritionMain={
+            weekNutritionPct != null ? `${weekNutritionPct}% adherencia` : "Sin datos"
           }
-          nutritionPct={weekNutritionPct}
+          nutritionSecondary={
+            week.filter((d) => d.state === "done").map((d) => d.day).join(" · ") || "Sin sesiones registradas"
+          }
+          nutritionPct={weekNutritionPct ?? 0}
         />
         <ProgressBlock
           title="Este mes"
           training={`${monthSessions} sesiones`}
-          nutritionMain={`${monthNutritionPct}% adherencia`}
-          nutritionSecondary="Promedio últimos 30 días"
-          nutritionPct={monthNutritionPct}
+          nutritionMain={
+            monthNutritionPct != null ? `${monthNutritionPct}% adherencia` : "Sin datos"
+          }
+          nutritionSecondary={
+            monthNutritionPct != null
+              ? "Promedio ultimos 30 dias"
+              : "Empezá a cargar comidas para ver tu promedio"
+          }
+          nutritionPct={monthNutritionPct ?? 0}
         />
       </div>
 
       {/* Acciones rapidas WhatsApp */}
       <div className="f-card mt-3 sm:mt-4">
-        <span className="f-datalabel">Acciones rápidas</span>
+        <span className="f-datalabel">Acciones rapidas</span>
         <p className="text-[13px] text-f-text2 mt-2 mb-3">
           Forja no te pide cargar formularios. Decile al bot lo que comiste
           o entrenaste y lo registra.
@@ -106,7 +125,7 @@ export function HomeAmateur() {
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
               restaurant
             </span>
-            Comí…
+            Comi…
           </a>
           <a
             href={waActions.reportSession}
@@ -117,14 +136,16 @@ export function HomeAmateur() {
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
               fitness_center
             </span>
-            Entrené…
+            Entrene…
           </a>
         </div>
       </div>
 
       <div className="mt-3 sm:mt-4">
         <Callout>
-          A la noche Forja revisa el día y te manda un resumen — con tu meta como brújula.
+          {source === "live"
+            ? "A la noche Forja revisa el dia y te manda un resumen — con tu meta como brujula."
+            : "Estos numeros son de ejemplo. Entrá desde WhatsApp para ver los tuyos."}
         </Callout>
       </div>
     </>
@@ -162,7 +183,7 @@ function ProgressBlock({
           <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
             restaurant
           </span>
-          Nutrición
+          Nutricion
         </div>
         <div className="text-[15px] text-f-text">{nutritionMain}</div>
         <div className="text-[12px] text-f-text3 mt-0.5">{nutritionSecondary}</div>

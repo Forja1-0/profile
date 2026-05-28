@@ -25,6 +25,7 @@ export interface Bundle {
   today: typeof mock.today;
   week: typeof mock.week;
   weekSummary: typeof mock.weekSummary;
+  monthly: typeof mock.monthly;
   streaks: typeof mock.streaks;
   nutritionPlan: typeof mock.nutritionPlan;
   restrictions: typeof mock.restrictions;
@@ -50,7 +51,8 @@ export interface Bundle {
 function demoBundle(): Bundle {
   return {
     athlete: mock.athlete, race: mock.race, today: mock.today, week: mock.week,
-    weekSummary: mock.weekSummary, streaks: mock.streaks as Bundle["streaks"],
+    weekSummary: mock.weekSummary, monthly: mock.monthly,
+    streaks: mock.streaks as Bundle["streaks"],
     nutritionPlan: mock.nutritionPlan, restrictions: mock.restrictions,
     nutritionHistory: mock.nutritionHistory, weeklyPlan: mock.weeklyPlan,
     sessionHistory: mock.sessionHistory, sessionStats: mock.sessionStats,

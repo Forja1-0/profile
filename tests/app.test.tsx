@@ -12,7 +12,7 @@ describe("App shell — routing, layout & navigation", () => {
   it("renders the demo status banner (offline mode)", () => {
     render(<App />);
     expect(
-      screen.getByText(/Modo demo · seteá VITE_API_URL y VITE_USER_ID/i),
+      screen.getByText(/Modo demo · entrá desde WhatsApp/i),
     ).toBeInTheDocument();
   });
 

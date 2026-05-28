@@ -12,7 +12,7 @@ export type Plan = "toyota" | "audi" | "ferrari";
 export const athlete: {
   name: string; firstName: string; age: number; sex: string; email: string;
   phone: string; plan: Plan; profileCompleteness: number; memberSince: string;
-  personalGoal?: string;
+  personalGoal: string | null;
 } = {
   name: "Rocío Mendoza",
   firstName: "Rocío",
@@ -64,6 +64,10 @@ export const week: { day: string; state: DayState; label: string }[] = [
 ];
 
 export const weekSummary = { sessionsDone: 3, sessionsPlanned: 5, nutritionPct: 87 };
+export const monthly: { sessionsDone: number; nutritionPct: number | null } = {
+  sessionsDone: 12,
+  nutritionPct: 84,
+};
 
 export const streaks = [
   { icon: "local_fire_department", text: "7 días consecutivos con nutrición >90%", tone: "green" },

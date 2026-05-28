@@ -87,7 +87,35 @@ export function injuryToDb(i: {
   };
 }
 
+/**
+ * Texto humano para la meta personal del usuario amateur. Combina goal_kind
+ * + metric_value + unit + label de forma legible. Devuelve null si no hay
+ * meta cargada (Home la trata como "todavia no pusiste una").
+ */
+function formatPersonalGoal(g: DbOverview["goal"]): string | null {
+  if (!g) return null;
+  // Meta libre con texto custom.
+  if (g.goal_metric_label && g.goal_metric_label.trim()) return g.goal_metric_label.trim();
+  const value = g.goal_metric_value;
+  const unit = g.goal_metric_unit;
+  switch (g.goal_kind) {
+    case "lose_weight":
+      return value && unit ? `Bajar ${value} ${unit}` : "Bajar de peso";
+    case "gain_muscle":
+      return value && unit ? `Sumar ${value} ${unit} de masa` : "Ganar masa muscular";
+    case "improve_time":
+      return value && unit ? `Mejorar tiempo a ${value} ${unit}` : "Mejorar mi tiempo";
+    case "reach_distance":
+      return value && unit ? `Llegar a ${value} ${unit}` : "Aumentar distancia";
+    default:
+      break;
+  }
+  // Meta elite tradicional (carrera/evento): caemos al event_name.
+  return g.event_name ?? null;
+}
+
 export function buildHome(id: DbProfileIdentity, o: DbOverview) {
+  const personalGoal = formatPersonalGoal(o.goal);
   const athlete = {
     ...mock.athlete,
     name: id.name,
@@ -97,9 +125,15 @@ export function buildHome(id: DbProfileIdentity, o: DbOverview) {
     email: id.email,
     phone: id.phone_wa,
     memberSince: id.member_since?.slice(0, 10) ?? mock.athlete.memberSince,
+    // En modo live, personalGoal viene del backend. Si no hay meta cargada,
+    // el componente HomeAmateur muestra el placeholder de "ponete una meta".
+    personalGoal: personalGoal ?? null,
   };
 
-  const race = o.goal
+  // El race solo aplica al modo elite (objetivo competitivo con fecha).
+  // Para amateur el goal puede no tener event_date — en ese caso nos
+  // quedamos con el mock para no romper la UI elite.
+  const race = o.goal && o.goal.event_date
     ? {
         name: o.goal.event_name ?? "Tu objetivo",
         date: o.goal.event_date,
@@ -148,10 +182,20 @@ export function buildHome(id: DbProfileIdentity, o: DbOverview) {
   });
 
   const doneN = o.trainingLogs.filter((l) => l.completed).length;
+  // Planeadas = filas activas en training_plans (no-rest). Si no hay plan,
+  // caemos a la cantidad logueada para no mostrar "X de 0".
+  const planned = o.weekSessionsPlanned || o.trainingLogs.length || 0;
   const weekSummary = {
     sessionsDone: doneN,
-    sessionsPlanned: o.trainingLogs.length || mock.weekSummary.sessionsPlanned,
-    nutritionPct: Math.round(o.summaries[0]?.kcal_adherence_pct ?? mock.weekSummary.nutritionPct),
+    sessionsPlanned: planned,
+    // Promedio real de adherencia de la semana, no el de hoy. Si el backend
+    // no devolvio nada (sin summaries en 7d), volvemos al mock.
+    nutritionPct: o.monthly?.nutritionPct7d ?? Math.round(o.summaries[0]?.kcal_adherence_pct ?? mock.weekSummary.nutritionPct),
+  };
+
+  const monthly = {
+    sessionsDone: o.monthly?.sessionsDone30d ?? 0,
+    nutritionPct: o.monthly?.nutritionPct30d ?? null,
   };
 
   const streaks = o.events.length
@@ -162,7 +206,7 @@ export function buildHome(id: DbProfileIdentity, o: DbOverview) {
       }))
     : mock.streaks;
 
-  return { athlete, race, today, week, weekSummary, streaks };
+  return { athlete, race, today, week, weekSummary, monthly, streaks };
 }
 
 export function buildNutrition(n: DbNutrition) {

@@ -63,15 +63,32 @@ async function upload<T>(path: string, form: FormData): Promise<T> {
 
 /* ---------- Tipos del backend (schema canónico) ---------- */
 export interface DbOverview {
-  goal: { event_name: string | null; event_date: string; distance: string | null; objective_notes: string | null; created_at: string } | null;
+  goal: {
+    event_type: string | null;
+    event_name: string | null;
+    event_date: string | null;
+    distance: string | null;
+    objective_notes: string | null;
+    goal_kind: string | null;
+    goal_metric_value: number | null;
+    goal_metric_unit: string | null;
+    goal_metric_label: string | null;
+    created_at: string;
+  } | null;
   plan: { target_kcal: number; target_protein_g: number; target_carbs_g: number; target_fat_g: number; nutritionist_name: string | null } | null;
   remaining: {
     target_kcal: number; target_protein_g: number; target_carbs_g: number; target_fat_g: number;
     consumed_kcal: number; consumed_protein: number; consumed_carbs: number; consumed_fat: number;
   } | null;
   todayTraining: { session_type: string; session_name: string | null; approx_time: string | null; duration_min: number | null } | null;
+  weekSessionsPlanned: number;
   summaries: Array<{ summary_date: string; total_kcal: number; total_protein_g: number; total_carbs_g: number; total_fat_g: number; kcal_adherence_pct: number | null; training_completed: boolean | null; training_rpe: number | null; performance_score: number | null }>;
   trainingLogs: Array<{ session_name: string; completed: boolean; rpe: number | null; notes: string | null; logged_at: string }>;
+  monthly: {
+    sessionsDone30d: number;
+    nutritionPct30d: number | null;
+    nutritionPct7d: number | null;
+  };
   events: Array<{ event_type: string; description: string; occurred_at: string }>;
 }
 

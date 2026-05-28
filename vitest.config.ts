@@ -10,7 +10,7 @@ export default defineConfig({
     css: false,
     // Force demo mode (no backend) so the suite is deterministic and offline.
     // These override anything in .env.local.
-    env: { VITE_USER_ID: "", VITE_API_URL: "" },
+    env: { VITE_USER_ID: "", VITE_API_URL: "", VITE_FORJA_MODE: "elite" },
     include: ["tests/**/*.test.tsx"],
     restoreMocks: true,
     clearMocks: true,
