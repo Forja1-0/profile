@@ -75,7 +75,7 @@ export interface DbOverview {
     goal_metric_label: string | null;
     created_at: string;
   } | null;
-  plan: { target_kcal: number; target_protein_g: number; target_carbs_g: number; target_fat_g: number; nutritionist_name: string | null } | null;
+  plan: { target_kcal: number; target_protein_g: number; target_carbs_g: number; target_fat_g: number; nutritionist_name: string | null; source: string | null } | null;
   remaining: {
     target_kcal: number; target_protein_g: number; target_carbs_g: number; target_fat_g: number;
     consumed_kcal: number; consumed_protein: number; consumed_carbs: number; consumed_fat: number;
@@ -90,6 +90,14 @@ export interface DbOverview {
     nutritionPct7d: number | null;
   };
   events: Array<{ event_type: string; description: string; occurred_at: string }>;
+  weight: {
+    series: Array<{ date: string; kg: number }>;
+    first: number | null;
+    latest: number | null;
+    count: number;
+    deltaFromFirst: number;
+  };
+  habit: { dayStreak: number; mealsThisWeek: number };
 }
 
 export interface DbFrequentMeal {

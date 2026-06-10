@@ -270,7 +270,32 @@ export function buildHome(id: DbProfileIdentity, o: DbOverview) {
     tone: e.event_type === "pr" ? "gold" : "green",
   }));
 
-  return { athlete, race, today, week, weekSummary, monthly, streaks };
+  // Progreso de peso (señal principal amateur). goalKg solo aplica a metas de
+  // peso (lose_weight/gain_muscle); para el resto no hay barra hacia meta.
+  const gk = o.goal?.goal_kind ?? null;
+  const goalKind: "lose_weight" | "gain_muscle" | null =
+    gk === "lose_weight" || gk === "gain_muscle" ? gk : null;
+  const weightProgress = {
+    current: o.weight?.latest ?? null,
+    start: o.weight?.first ?? null,
+    deltaFromStart: o.weight?.deltaFromFirst ?? 0,
+    goalKg: goalKind ? o.goal?.goal_metric_value ?? null : null,
+    goalKind,
+    count: o.weight?.count ?? 0,
+    series: o.weight?.series ?? [],
+  };
+
+  const habit = {
+    dayStreak: o.habit?.dayStreak ?? 0,
+    mealsThisWeek: o.habit?.mealsThisWeek ?? 0,
+    sessionsThisWeek: doneN,
+  };
+
+  const ps = o.plan?.source ?? null;
+  const targetSource: "manual" | "forja_auto" | null =
+    ps === "manual" || ps === "forja_auto" ? ps : null;
+
+  return { athlete, race, today, week, weekSummary, monthly, streaks, weightProgress, habit, targetSource };
 }
 
 export function buildNutrition(n: DbNutrition) {

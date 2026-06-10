@@ -32,6 +32,9 @@ export interface Bundle {
   weekSummary: typeof mock.weekSummary;
   monthly: typeof mock.monthly;
   streaks: typeof mock.streaks;
+  weightProgress: typeof mock.weightProgress;
+  habit: typeof mock.habit;
+  targetSource: typeof mock.targetSource;
   nutritionPlan: typeof mock.nutritionPlan;
   restrictions: typeof mock.restrictions;
   nutritionHistory: typeof mock.nutritionHistory;
@@ -76,6 +79,9 @@ function emptyBundle(): Bundle {
     weekSummary: { sessionsDone: 0, sessionsPlanned: 0, nutritionPct: 0 },
     monthly: { sessionsDone: 0, nutritionPct: null },
     streaks: [] as unknown as Bundle["streaks"],
+    weightProgress: { current: null, start: null, deltaFromStart: 0, goalKg: null, goalKind: null, count: 0, series: [] },
+    habit: { dayStreak: 0, mealsThisWeek: 0, sessionsThisWeek: 0 },
+    targetSource: null,
     nutritionPlan: { protein: 0, carbs: 0, fat: 0, kcal: 0, nutritionist: "—", hasPdf: false, history: [] },
     restrictions: [],
     nutritionHistory: [],

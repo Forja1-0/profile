@@ -351,6 +351,16 @@ function NutritionPlan() {
             </div>
           ))}
         </div>
+        {data.targetSource === "forja_auto" && (
+          <div className="mt-4 rounded-lg border border-f-border bg-f-surface px-4 py-3 flex gap-2.5 items-start">
+            <span className="material-symbols-outlined text-f-green-light mt-0.5" style={{ fontSize: 16 }}>auto_awesome</span>
+            <p className="text-[12px] leading-[1.5] text-f-text2">
+              <span className="text-f-text">Target estimado por Forja</span> a partir de tus datos (peso, altura, edad, actividad) y tu meta —
+              se recalcula solo cuando cargás tu peso. Es una estimación para empezar, <span className="text-f-text">no reemplaza a un nutricionista</span>.
+              Si tenés un plan, subilo y mando estos números a un lado.
+            </p>
+          </div>
+        )}
         <p className="text-[12px] text-f-text3 mt-4">Los cambios aplican desde mañana — no son retroactivos.</p>
       </div>
 

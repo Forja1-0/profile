@@ -75,6 +75,41 @@ export const streaks = [
   { icon: "bolt", text: "Semana 13 cerrada con score 91", tone: "green" },
 ];
 
+/* Progreso de peso — señal principal del modo amateur (tendencia, no punto). */
+export const weightProgress: {
+  current: number | null;
+  start: number | null;
+  deltaFromStart: number;
+  goalKg: number | null;
+  goalKind: "lose_weight" | "gain_muscle" | null;
+  count: number;
+  series: { date: string; kg: number }[];
+} = {
+  current: 62.4,
+  start: 65.8,
+  deltaFromStart: -3.4,
+  goalKg: 5,
+  goalKind: "lose_weight",
+  count: 7,
+  series: [
+    { date: "2026-02-15", kg: 65.8 }, { date: "2026-03-01", kg: 65.1 },
+    { date: "2026-03-15", kg: 64.4 }, { date: "2026-04-01", kg: 63.7 },
+    { date: "2026-04-15", kg: 63.2 }, { date: "2026-05-01", kg: 62.8 },
+    { date: "2026-05-15", kg: 62.4 },
+  ],
+};
+
+/* Consistencia de hábito — la otra señal del amateur (aparecer, no perfección). */
+export const habit: { dayStreak: number; mealsThisWeek: number; sessionsThisWeek: number } = {
+  dayStreak: 5,
+  mealsThisWeek: 14,
+  sessionsThisWeek: 3,
+};
+
+/* Origen del target activo: "manual" (nutri / editado a mano) | "forja_auto"
+   (estimado por Forja, modo amateur) | null (sin plan). Define el copy honesto. */
+export const targetSource: "manual" | "forja_auto" | null = "manual";
+
 /* ---------- Nutrición ---------- */
 export type Ingredient = { name: string; grams: number; p: number; c: number; f: number; kcal: number };
 export type FrequentMeal = {

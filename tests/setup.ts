@@ -27,4 +27,8 @@ if (!window.matchMedia) {
   })) as unknown as typeof window.matchMedia;
 }
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  // La sesión vive en localStorage; limpiarla para que no se filtre entre tests.
+  localStorage.clear();
+});

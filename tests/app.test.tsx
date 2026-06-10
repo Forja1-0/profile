@@ -1,64 +1,72 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { App } from "../src/App";
+import { describe, it, expect, beforeEach } from "vitest";
+import { screen } from "@testing-library/react";
+import { renderApp, loginTestSession, clearSession } from "./helpers";
 
-describe("App shell — routing, layout & navigation", () => {
-  it("redirects the root path to the Inicio page", () => {
-    render(<App />);
-    expect(screen.getByText(/Buen día,/i)).toBeInTheDocument();
+/**
+ * El perfil web NO tiene modo demo: nunca muestra datos inventados. Estos tests
+ * verifican esa honestidad sin mocks ni fixtures:
+ *   - sin sesión  → Gate (entrá por WhatsApp), nada de perfil.
+ *   - con sesión, offline (no se puede cargar) → cartel honesto "no pudimos
+ *     cargar tus datos", y CERO datos fabricados.
+ * "offline" es real: setup.ts hace que cualquier fetch explote.
+ */
+
+// Strings del viejo modo demo. Si alguno reaparece, volvimos a inventar datos.
+const FABRICATED = ["Rocío", "IRONMAN 5150 San Juan", "Sentadilla", "Rocío Mendoza"];
+
+// Rutas elite (VITE_FORJA_MODE=elite en vitest.config).
+const PROFILE_ROUTES = [
+  "/perfil/inicio",
+  "/perfil/nutricion",
+  "/perfil/entrenamiento",
+  "/perfil/salud",
+  "/perfil/configuracion",
+  "/perfil/journey",
+  "/perfil/suscripcion",
+];
+
+describe("web_profile — honestidad de datos (sin modo demo)", () => {
+  beforeEach(() => clearSession());
+
+  it("sin sesión → Gate (entrá por WhatsApp), nunca el perfil ni datos inventados", () => {
+    renderApp("/perfil/inicio");
+    expect(screen.getByText(/Tu perfil vive detrás de WhatsApp/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Abrir Forja en WhatsApp/i })).toBeInTheDocument();
+    for (const f of FABRICATED) expect(screen.queryByText(f)).not.toBeInTheDocument();
   });
 
-  it("renders the demo status banner (offline mode)", () => {
-    render(<App />);
-    expect(
-      screen.getByText(/Modo demo · entrá desde WhatsApp/i),
-    ).toBeInTheDocument();
-  });
+  describe("con sesión pero offline (no se pueden cargar los datos)", () => {
+    beforeEach(() => loginTestSession());
 
-  it("renders every section in the navigation (sidebar + bottom nav + 'Más' drawer)", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    // Primarias: viven en sidebar y bottom nav.
-    for (const label of [/Nutrición/i, /Entreno/i, /Salud/i]) {
-      expect(screen.getAllByRole("link", { name: label }).length).toBeGreaterThan(0);
+    it("muestra el cartel honesto y ningún dato inventado", async () => {
+      renderApp("/perfil/inicio");
+      expect(await screen.findByText(/No pudimos cargar tus datos/i)).toBeInTheDocument();
+      for (const f of FABRICATED) expect(screen.queryByText(f)).not.toBeInTheDocument();
+    });
+
+    it("la navegación del perfil sigue presente (UI estática, no datos)", async () => {
+      renderApp("/perfil/inicio");
+      await screen.findByText(/No pudimos cargar tus datos/i);
+      for (const label of [/Nutrición/i, /Entreno/i, /Salud/i]) {
+        expect(screen.getAllByRole("link", { name: label }).length).toBeGreaterThan(0);
+      }
+    });
+
+    it("mantiene el disclaimer legal y un acceso a WhatsApp", async () => {
+      renderApp("/perfil/inicio");
+      await screen.findByText(/No pudimos cargar tus datos/i);
+      expect(screen.getByText(/Forja no constituye asesoramiento médico/i)).toBeInTheDocument();
+      const waLinks = screen
+        .getAllByRole("link")
+        .filter((a) => a.getAttribute("href")?.includes("wa.me"));
+      expect(waLinks.length).toBeGreaterThan(0);
+    });
+
+    for (const route of PROFILE_ROUTES) {
+      it(`ruta ${route} → cartel offline, sin pantalla en blanco`, async () => {
+        renderApp(route);
+        expect(await screen.findByText(/No pudimos cargar tus datos/i)).toBeInTheDocument();
+      });
     }
-    // Secundarias: en sidebar siempre; en mobile detrás del botón "Más".
-    // Abrimos el drawer para que existan en el DOM accesible para mobile users.
-    await user.click(screen.getByRole("button", { name: /Abrir más opciones/i }));
-    for (const label of [/Journey/i, /Configuración/i, /Suscripción/i]) {
-      expect(screen.getAllByRole("link", { name: label }).length).toBeGreaterThan(0);
-    }
-  });
-
-  it("exposes WhatsApp entry points", () => {
-    render(<App />);
-    const waLinks = screen
-      .getAllByRole("link")
-      .filter((a) => a.getAttribute("href")?.includes("wa.me") || /whatsapp/i.test(a.textContent ?? ""));
-    expect(waLinks.length).toBeGreaterThan(0);
-  });
-
-  it("renders the legal disclaimer footer", () => {
-    render(<App />);
-    expect(
-      screen.getByText(/Forja no constituye asesoramiento médico/i),
-    ).toBeInTheDocument();
-  });
-
-  it("navigates to another section when a nav link is clicked", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    const nutritionLink = screen.getAllByRole("link", { name: /Nutrición/i })[0];
-    await user.click(nutritionLink);
-    expect(await screen.findByText(/El corazón del tracking/i)).toBeInTheDocument();
-  });
-
-  it("keeps the mobile bottom nav present in the DOM", () => {
-    render(<App />);
-    // Bottom nav uses short labels; "Entreno" only exists there.
-    const bottomTab = screen.getByRole("link", { name: /Entreno/i });
-    expect(bottomTab).toBeInTheDocument();
-    within(bottomTab).getByText("Entreno");
   });
 });

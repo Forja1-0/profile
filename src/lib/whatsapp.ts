@@ -27,5 +27,6 @@ export const waActions = {
   logMeal: waLink("Loguear comida"),
   reportSession: waLink("Reportar sesion"),
   reportSlip: waLink("Reportar desliz"),
+  logWeight: waLink("peso "),
   open: waLink(),
 };
