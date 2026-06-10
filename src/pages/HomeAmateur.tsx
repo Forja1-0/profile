@@ -15,8 +15,7 @@ import { Callout, Pill, SectionHeader } from "../components/ui";
  */
 export function HomeAmateur() {
   const { data, source } = useProfileData();
-  const { athlete, today, weekSummary, monthly, weightProgress: wp, habit, targetSource } = data;
-  const isEstimatedTarget = targetSource === "forja_auto";
+  const { athlete, today, weekSummary, monthly, weightProgress: wp, habit } = data;
 
   const goalText =
     athlete.personalGoal ??
@@ -149,22 +148,22 @@ export function HomeAmateur() {
               ? `${weekSummary.sessionsDone} de ${weekSummary.sessionsPlanned} sesiones`
               : `${weekSummary.sessionsDone} sesiones`
           }
-          muted={weekSummary.nutritionPct > 0 ? `nutrición ${weekSummary.nutritionPct}% del estimado` : undefined}
+          muted={weekSummary.nutritionPct > 0 ? `nutrición ${weekSummary.nutritionPct}% del objetivo` : undefined}
         />
         <CompactBlock
           title="Este mes"
           main={`${monthly.sessionsDone} sesiones`}
-          muted={monthly.nutritionPct != null ? `nutrición ${monthly.nutritionPct}% del estimado` : undefined}
+          muted={monthly.nutritionPct != null ? `nutrición ${monthly.nutritionPct}% del objetivo` : undefined}
         />
       </div>
 
-      {/* Hoy (kcal, en chico; "estimado" solo si el target lo calculó Forja) */}
+      {/* Hoy (kcal consumidas / objetivo). Las kcal consumidas salen de SARA
+          (reales); el objetivo lo calcula Forja. No hedgeamos los números. */}
       {todayKcalTarget > 0 && (
         <div className="f-card mt-3 sm:mt-4 flex items-center justify-between gap-3">
           <span className="f-datalabel">Hoy</span>
           <span className="font-mono text-[13px] text-f-text2">
             {todayKcal} / {todayKcalTarget} kcal
-            {isEstimatedTarget && <span className="text-f-text3"> (estimado)</span>}
           </span>
         </div>
       )}

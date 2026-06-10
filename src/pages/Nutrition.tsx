@@ -355,8 +355,8 @@ function NutritionPlan() {
           <div className="mt-4 rounded-lg border border-f-border bg-f-surface px-4 py-3 flex gap-2.5 items-start">
             <span className="material-symbols-outlined text-f-green-light mt-0.5" style={{ fontSize: 16 }}>auto_awesome</span>
             <p className="text-[12px] leading-[1.5] text-f-text2">
-              <span className="text-f-text">Target estimado por Forja</span> a partir de tus datos (peso, altura, edad, actividad) y tu meta —
-              se recalcula solo cuando cargás tu peso. Es una estimación para empezar, <span className="text-f-text">no reemplaza a un nutricionista</span>.
+              <span className="text-f-text">Target calculado por Forja</span> a partir de tus datos (peso, altura, edad, actividad) y tu meta —
+              se recalcula solo cuando cargás tu peso. <span className="text-f-text">No reemplaza a un nutricionista</span>.
               Si tenés un plan, subilo y mando estos números a un lado.
             </p>
           </div>
@@ -565,7 +565,7 @@ function RecentMealsCard({ meals }: { meals: MealLogEntry[] }) {
               <div className="text-[14px] text-f-text truncate">
                 {m.title}
                 {m.isEstimate && (
-                  <span className="ml-2 font-mono text-[10px] text-f-text3 align-middle">estimado</span>
+                  <span className="ml-2 font-mono text-[10px] text-f-text3 align-middle">cant. aprox.</span>
                 )}
               </div>
               <div className="font-mono text-[11px] text-f-text3 mt-0.5">
